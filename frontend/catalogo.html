@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catálogo | Charqui</title><link rel="icon" href="/img/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/css/estilos.css"><script src="/js/visual.js" defer></script><script src="/js/catalogo.js" defer></script>
+</head>
+<body>
+  <header class="barra-superior"><div class="barra-interior"><a class="marca" href="/" aria-label="Charqui, inicio"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo circular de Charqui con huella"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
+    <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a class="actual" aria-current="page" href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav>
+    <div class="acciones-cabecera"><a class="enlace-carrito" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a class="actual" aria-current="page" href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav></details></div>
+  </div></header>
+  <main class="contenido-pagina">
+    <section class="encabezado-pagina revelar"><p class="sobrelinea">SABORES PARA CADA MASCOTA</p><h1>Nuestro catálogo</h1><p>Snacks naturales, preparados con cariño en Quito.</p></section>
+    <section class="catalogo-seccion"><div class="filtros-catalogo" role="group" aria-label="Filtrar productos por mascota"><button class="filtro-pastilla activo" type="button" data-mascota="todos" aria-pressed="true">Todos</button><button class="filtro-pastilla" type="button" data-mascota="perro" aria-pressed="false">Perros</button><button class="filtro-pastilla" type="button" data-mascota="gato" aria-pressed="false">Gatos</button></div>
+      <label class="solo-lector" for="filtro-mascota">Filtrar por mascota</label><select id="filtro-mascota" class="solo-lector"><option value="todos">Todas</option><option value="perro">Perro</option><option value="gato">Gato</option></select>
+      <p id="mensaje-catalogo" class="mensaje-estado" aria-live="polite">Cargando productos...</p><div id="productos" class="rejilla-productos"></div>
+    </section>
+  </main>
+  <footer class="pie-pagina"><div class="pie-interior"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div></div></footer>
+  <a class="whatsapp-flotante" href="https://wa.me/593994324874" data-whatsapp aria-label="Escríbenos por WhatsApp">WhatsApp</a>
+</body>
+</html>
+
+

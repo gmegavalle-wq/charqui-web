@@ -1,0 +1,118 @@
+let configuracionEnvio = { tarifas: {}, envio_gratis_desde: 20, zonas_envio_gratis: [], formas_pago: [] };
+let productosPedido = [];
+
+function mostrarErrorCampo(campo) {
+  const aviso = document.getElementById(`error-${campo.id}`);
+  if (!aviso) return;
+  if (campo.validity.valueMissing) aviso.textContent = 'Este campo es obligatorio.';
+  else if (!campo.validity.valid) aviso.textContent = 'Revisa el formato de este dato.';
+  else aviso.textContent = '';
+}
+
+function escaparHtml(texto) {
+  return String(texto || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function cargarResumen() {
+  const carrito = JSON.parse(localStorage.getItem('charqui_carrito') || '[]');
+  const resumen = document.getElementById('resumen-pedido');
+  if (!carrito.length) {
+    resumen.textContent = 'Tu carrito está vacío. Añade productos antes de confirmar.';
+    document.querySelector('#formulario-pedido button[type="submit"]').disabled = true;
+    return;
+  }
+
+  const respuestaEnvio = await fetch('/api/envios');
+  configuracionEnvio = await respuestaEnvio.json();
+  const zonas = document.getElementById('zona');
+  zonas.innerHTML = '<option value="">Elige una zona</option>' +
+    Object.keys(configuracionEnvio.tarifas || {}).map((zona) =>
+      `<option value="${escaparHtml(zona)}">${escaparHtml(zona)}</option>`
+    ).join('');
+  const pagos = document.getElementById('forma-pago');
+  pagos.innerHTML = '<option value="">Elige una forma de pago</option>' +
+    (configuracionEnvio.formas_pago || []).map((forma) =>
+      `<option value="${escaparHtml(forma)}">${escaparHtml(forma)}</option>`
+    ).join('');
+
+  productosPedido = await Promise.all(carrito.map(async (item) => {
+    const respuesta = await fetch(`/api/productos/${item.id}`);
+    const producto = await respuesta.json();
+    if (!respuesta.ok) throw new Error(producto.error);
+    return { id: producto.id, nombre: producto.nombre, cantidad: item.cantidad,
+      precio: Number(producto.precio_oferta || producto.precio) };
+  }));
+  dibujarResumen();
+  zonas.addEventListener('change', dibujarResumen);
+}
+
+function dibujarResumen() {
+  const subtotal = productosPedido.reduce((suma, item) => suma + item.precio * item.cantidad, 0);
+  const zona = document.getElementById('zona').value;
+  const gratisDesde = Number(configuracionEnvio.envio_gratis_desde);
+  const envioGratis = configuracionEnvio.zonas_envio_gratis.includes(zona) && subtotal >= gratisDesde;
+  const costoEnvio = zona ? (envioGratis ? 0 : Number(configuracionEnvio.tarifas[zona] || 0)) : null;
+  const total = subtotal + (costoEnvio || 0);
+  document.getElementById('resumen-pedido').innerHTML = `
+    <h2>Resumen del pedido</h2>
+    <ul>${productosPedido.map((item) => `<li>${escaparHtml(item.nombre)} × ${item.cantidad}: $${(item.precio * item.cantidad).toFixed(2)}</li>`).join('')}</ul>
+    <p>Subtotal: $${subtotal.toFixed(2)}</p>
+    <p>Envío: ${costoEnvio === null ? 'Elige una zona para calcularlo.' : `$${costoEnvio.toFixed(2)}`}</p>
+    <p>Total: $${total.toFixed(2)}${costoEnvio === null ? ' + envío' : ''}</p>`;
+}
+
+document.getElementById('formulario-pedido').addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  const mensaje = document.getElementById('mensaje-pedido');
+  const formulario = evento.currentTarget;
+  if (!formulario.reportValidity()) return;
+
+  const telefono = document.getElementById('telefono').value.trim();
+  if (!/^[+0-9 ()-]{7,20}$/.test(telefono)) {
+    mensaje.textContent = 'Escribe un teléfono válido.';
+    document.getElementById('error-telefono').textContent = 'Escribe un teléfono válido.';
+    return;
+  }
+
+  const datos = {
+    cliente: {
+      nombre: document.getElementById('nombre').value.trim(),
+      telefono,
+      correo: document.getElementById('correo').value.trim()
+    },
+    direccion_entrega: document.getElementById('direccion').value.trim(),
+    zona_entrega: document.getElementById('zona').value,
+    forma_pago: document.getElementById('forma-pago').value,
+    consentimiento: document.getElementById('consentimiento').checked,
+    productos: productosPedido.map((item) => ({ id: item.id, cantidad: item.cantidad }))
+  };
+
+  try {
+    const respuesta = await fetch('/api/pedidos', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
+    });
+    const pedido = await respuesta.json();
+    if (!respuesta.ok) throw new Error(pedido.error || 'No se pudo registrar el pedido.');
+    localStorage.removeItem('charqui_carrito');
+    window.dispatchEvent(new Event('charqui-carrito-actualizado'));
+    const lista = pedido.productos.map((item) => `${item.nombre} x ${item.cantidad}: $${Number(item.subtotal).toFixed(2)}`).join('\n');
+    const resumen = `Hola, quiero coordinar el pago del pedido #${pedido.id}.\n${lista}\nEnvío: $${Number(pedido.costo_envio).toFixed(2)}\nTotal: $${Number(pedido.total).toFixed(2)}\nForma de pago: ${pedido.forma_pago}`;
+    window.location.href = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(resumen)}`;
+  } catch (error) {
+    mensaje.textContent = error.message;
+  }
+});
+
+const formularioPedido = document.getElementById('formulario-pedido');
+formularioPedido.addEventListener('invalid', (evento) => mostrarErrorCampo(evento.target), true);
+formularioPedido.addEventListener('input', (evento) => {
+  if (evento.target.id) mostrarErrorCampo(evento.target);
+});
+formularioPedido.addEventListener('change', (evento) => {
+  if (evento.target.id) mostrarErrorCampo(evento.target);
+});
+
+cargarResumen().catch(() => {
+  document.getElementById('mensaje-pedido').textContent = 'No se pudo cargar el resumen del pedido.';
+});

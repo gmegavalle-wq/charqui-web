@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confirmar pedido | Charqui</title><link rel="icon" href="/img/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="/css/estilos.css"><script src="/js/visual.js" defer></script><script src="/js/pedido.js" defer></script>
+</head>
+<body>
+  <header class="barra-superior"><div class="barra-interior"><a class="marca" href="/" aria-label="Charqui, inicio"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo circular de Charqui con huella"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
+    <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav>
+    <div class="acciones-cabecera"><a class="enlace-carrito actual" aria-current="page" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav></details></div>
+  </div></header>
+  <main class="contenido-pagina pedido-pagina"><section class="encabezado-pagina revelar"><p class="sobrelinea">CASI LISTO</p><h1>Confirma tu pedido</h1><p>Completa tus datos de entrega y coordinaremos el pago por WhatsApp.</p></section>
+    <ol class="pasos-compra revelar"><li><span>1</span> Carrito</li><li class="paso-activo"><span>2</span> Datos</li><li><span>3</span> Confirmar</li></ol>
+    <div class="pedido-columnas"><form id="formulario-pedido" class="formulario-pedido">
+      <label for="nombre">Nombre completo</label><input id="nombre" name="nombre" aria-describedby="error-nombre" required><small id="error-nombre" class="error-campo" aria-live="polite"></small>
+      <label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel" aria-describedby="error-telefono" required><small id="error-telefono" class="error-campo" aria-live="polite"></small>
+      <label for="correo">Correo electrónico</label><input id="correo" name="correo" type="email" aria-describedby="error-correo" required><small id="error-correo" class="error-campo" aria-live="polite"></small>
+      <label for="direccion">Dirección exacta</label><textarea id="direccion" name="direccion" aria-describedby="error-direccion" required></textarea><small id="error-direccion" class="error-campo" aria-live="polite"></small>
+      <label for="zona">Zona de entrega</label><select id="zona" name="zona" aria-describedby="error-zona" required></select><small id="error-zona" class="error-campo" aria-live="polite"></small>
+      <label for="forma-pago">Forma de pago</label><select id="forma-pago" name="forma_pago" aria-describedby="error-forma-pago" required></select><small id="error-forma-pago" class="error-campo" aria-live="polite"></small>
+      <label class="etiqueta-consentimiento"><input id="consentimiento" type="checkbox" aria-describedby="error-consentimiento" required> Acepto el uso de mis datos según la <a href="/politica.html">política de privacidad</a>.</label><small id="error-consentimiento" class="error-campo" aria-live="polite"></small>
+      <button class="boton boton-principal boton-ancho" type="submit">Confirmar pedido</button>
+    </form>
+    <aside id="resumen-pedido" class="resumen-pedido"></aside></div>
+    <p id="mensaje-pedido" class="error" aria-live="polite"></p>
+  </main>
+  <footer class="pie-pagina"><div class="pie-interior"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div></div></footer>
+  <a class="whatsapp-flotante" href="https://wa.me/593994324874" data-whatsapp aria-label="Escríbenos por WhatsApp">WhatsApp</a>
+</body>
+</html>
+
+
