@@ -1,52 +1,183 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administración | Charqui</title><link rel="icon" href="/img/logo.png" type="image/png">
-  <link rel="stylesheet" href="/css/estilos.css"><script src="/js/visual.js" defer></script><script src="/js/admin.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administración | Charqui</title>
+  <link rel="icon" href="/img/logo.png" type="image/png">
+  <link rel="stylesheet" href="/css/estilos.css">
+  <script src="/js/visual.js" defer></script>
+  <script src="/js/admin.js" defer></script>
 </head>
 <body>
-  <header class="barra-superior"><div class="barra-interior"><a class="marca" href="/" aria-label="Charqui, inicio"><img class="logo-imagen" src="/img/logo.png" alt="Logo circular de Charqui con huella"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
-    <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav>
-    <div class="acciones-cabecera"><a class="enlace-carrito" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav></details></div>
-  </div></header>
+  <header class="barra-superior">
+    <div class="barra-interior">
+      <a class="marca" href="/" aria-label="Charqui, inicio">
+        <img class="logo-imagen" src="/img/logo.png" alt="Logo oficial de Charqui">
+        <span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span>
+      </a>
+      <nav class="navegacion-desktop" aria-label="Navegación principal">
+        <a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a>
+      </nav>
+      <div class="acciones-cabecera">
+        <a class="enlace-carrito" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a>
+        <details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav></details>
+      </div>
+    </div>
+  </header>
+
   <main class="contenido-pagina admin-pagina">
-    <section id="acceso-admin" class="login-admin"><p class="sobrelinea">ÁREA PRIVADA</p><h1>Administración</h1><p class="texto-secundario">Ingresa para gestionar pedidos, productos y clientes de Charqui.</p><form id="formulario-login">
-      <label for="correo-admin">Correo</label><input id="correo-admin" type="email" required>
-      <label for="contrasena-admin">Contraseña</label><input id="contrasena-admin" type="password" required>
-      <button type="submit">Iniciar sesión</button>
-    </form><p id="mensaje-admin" class="error" aria-live="polite"></p></section>
+    <section id="acceso-admin" class="login-admin">
+      <p class="sobrelinea">Área privada</p><h1>Administración</h1>
+      <p class="texto-secundario">Ingresa para gestionar pedidos, productos y operaciones de Charqui.</p>
+      <form id="formulario-login">
+        <label for="correo-admin">Correo</label><input id="correo-admin" type="email" required autocomplete="username">
+        <label for="contrasena-admin">Contraseña</label><input id="contrasena-admin" type="password" required autocomplete="current-password">
+        <button type="submit">Iniciar sesión</button>
+      </form>
+      <p id="mensaje-admin" class="error" aria-live="polite"></p>
+    </section>
+
     <div id="panel-admin" hidden>
-      <div class="botones encabezado-admin"><div><p class="sobrelinea">CHARQUI · QUITO</p><h1>Panel de administración</h1></div><button id="cerrar-sesion" type="button">Cerrar sesión</button></div>
-      <section><h2>Pedidos</h2><div class="tabla-contenedor"><table><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Productos</th><th>Dirección</th><th>Zona y envío</th><th>Forma de pago</th><th>Total</th><th>Pago</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-pedidos"></tbody></table></div></section>
-      <section><h2>Productos</h2><form id="formulario-producto">
-        <input id="producto-id" type="hidden">
-        <label for="producto-nombre">Nombre</label><input id="producto-nombre" required>
-        <label for="producto-descripcion">Descripción</label><textarea id="producto-descripcion" required></textarea>
-        <label for="producto-precio">Precio</label><input id="producto-precio" type="number" min="0.01" step="0.01" required>
-        <label for="producto-oferta">Precio de oferta (opcional)</label><input id="producto-oferta" type="number" min="0.01" step="0.01">
-        <label for="producto-stock">Stock</label><input id="producto-stock" type="number" min="0" step="1" required>
-        <label for="producto-mascota">Tipo de mascota</label><select id="producto-mascota"><option value="perro">Perro</option><option value="gato">Gato</option><option value="ambos">Ambos</option></select>
-        <label for="producto-nutricion">Información nutricional</label><textarea id="producto-nutricion"></textarea>
-        <label for="producto-presentaciones">Presentaciones</label><input id="producto-presentaciones">
-        <div class="campo-fotografia">
-          <label class="boton boton-fotografia" for="archivo-fotografia">Seleccionar fotografía</label>
-          <input id="archivo-fotografia" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="nombre-fotografia ayuda-fotografia error-fotografia">
-          <input id="producto-imagen" type="hidden">
-          <p id="nombre-fotografia" class="nombre-fotografia" aria-live="polite">Sin fotografía seleccionada</p>
-          <p id="ayuda-fotografia" class="texto-secundario">JPG, JPEG, PNG o WEBP. Tamaño máximo: 5 MB.</p>
-          <div class="previsualizacion-fotografia"><img id="previsualizacion-producto" alt="Vista previa de la fotografía del producto" hidden><p id="aviso-previsualizacion">La fotografía seleccionada aparecerá aquí.</p></div>
-          <p id="error-fotografia" class="error-campo" aria-live="polite"></p>
+      <div class="encabezado-admin">
+        <div><p class="sobrelinea">Charqui · Quito</p><h1>Panel de gestión</h1></div>
+        <button id="cerrar-sesion" type="button">Cerrar sesión</button>
+      </div>
+      <p id="mensaje-panel" class="mensaje-panel" aria-live="polite"></p>
+      <div class="administracion-layout">
+        <nav class="menu-admin" aria-label="Módulos del administrador">
+          <button type="button" data-modulo="dashboard" class="activo">Resumen</button>
+          <button type="button" data-modulo="pedidos">Pedidos</button>
+          <button type="button" data-modulo="entregas">Entregas</button>
+          <button type="button" data-modulo="inventario">Inventario</button>
+          <button type="button" data-modulo="clientes">Clientes</button>
+          <button type="button" data-modulo="reportes">Reportes</button>
+          <button type="button" data-modulo="envios">Envíos y pagos</button>
+          <button type="button" data-modulo="productos">Productos</button>
+        </nav>
+
+        <div class="contenido-admin">
+          <section id="modulo-dashboard" class="modulo-admin">
+            <h2>Resumen del negocio</h2>
+            <div id="indicadores-admin" class="indicadores-admin" aria-live="polite"></div>
+          </section>
+
+          <section id="modulo-pedidos" class="modulo-admin" hidden>
+            <h2>Pedidos</h2>
+            <form id="filtros-pedidos" class="filtros-admin">
+              <label for="buscar-pedido-admin">Número, cliente o teléfono</label><input id="buscar-pedido-admin">
+              <label for="filtro-estado-pedido">Estado</label>
+              <select id="filtro-estado-pedido"><option value="">Todos</option></select>
+              <label for="pedidos-desde">Desde</label><input id="pedidos-desde" type="date">
+              <label for="pedidos-hasta">Hasta</label><input id="pedidos-hasta" type="date">
+              <label for="orden-pedidos">Orden</label><select id="orden-pedidos"><option value="recientes">Más recientes</option><option value="antiguos">Más antiguos</option></select>
+              <button type="submit">Aplicar filtros</button>
+            </form>
+            <div class="tabla-contenedor"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Pago</th><th>Estado</th><th>Ficha</th></tr></thead><tbody id="tabla-pedidos"></tbody></table></div>
+          </section>
+
+          <section id="modulo-entregas" class="modulo-admin" hidden>
+            <h2>Entregas y reparto</h2>
+            <p>Pedidos listos para despacho y en reparto local.</p>
+            <div class="tabla-contenedor"><table><thead><tr><th>Pedido</th><th>Cliente y teléfono</th><th>Dirección</th><th>Salida</th><th>Mapa</th><th>Contacto</th><th>Datos de reparto</th></tr></thead><tbody id="tabla-entregas"></tbody></table></div>
+            <form id="formulario-entrega" class="formulario-modulo">
+              <h3>Registrar reparto</h3><input id="id-pedido-entrega" type="hidden">
+              <p id="pedido-entrega-seleccionado" class="texto-secundario">Selecciona una entrega de la tabla.</p>
+              <label for="repartidor-nombre">Repartidor</label><input id="repartidor-nombre" maxlength="120">
+              <label for="salida-reparto">Fecha y hora de salida</label><input id="salida-reparto" type="datetime-local">
+              <label for="observaciones-entrega">Observaciones</label><textarea id="observaciones-entrega" maxlength="2000"></textarea>
+              <button type="submit">Guardar datos de reparto</button>
+            </form>
+          </section>
+
+          <section id="modulo-inventario" class="modulo-admin" hidden>
+            <h2>Inventario</h2><p>Alerta de stock bajo: 5 unidades o menos.</p>
+            <div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Existencias</th><th>Estado</th><th>Último movimiento</th><th>Historial</th></tr></thead><tbody id="tabla-inventario"></tbody></table></div>
+            <form id="formulario-inventario" class="formulario-modulo">
+              <h3>Registrar movimiento manual</h3>
+              <label for="producto-movimiento">Producto</label><select id="producto-movimiento" required></select>
+              <label for="tipo-movimiento">Movimiento</label><select id="tipo-movimiento"><option value="entrada">Entrada</option><option value="salida">Salida</option><option value="ajuste">Ajuste a existencias</option></select>
+              <label for="cantidad-movimiento">Unidades (entrada o salida)</label><input id="cantidad-movimiento" type="number" min="1" step="1">
+              <label for="stock-objetivo">Nuevo stock (ajuste)</label><input id="stock-objetivo" type="number" min="0" step="1">
+              <label for="motivo-movimiento">Motivo obligatorio</label><textarea id="motivo-movimiento" maxlength="500" required></textarea>
+              <button type="submit">Guardar movimiento</button>
+            </form>
+            <h3>Historial del producto</h3><div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Antes</th><th>Después</th><th>Motivo</th><th>Responsable</th></tr></thead><tbody id="tabla-movimientos"></tbody></table></div>
+          </section>
+
+          <section id="modulo-clientes" class="modulo-admin" hidden>
+            <h2>Clientes</h2>
+            <form id="buscar-cliente-admin" class="busqueda-admin"><label for="filtro-cliente">Nombre, correo o teléfono</label><input id="filtro-cliente"><button type="submit">Buscar</button></form>
+            <div class="tabla-contenedor"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Cédula</th><th>Pedidos</th><th>Total de compras</th><th>Historial</th></tr></thead><tbody id="tabla-clientes"></tbody></table></div>
+            <div id="detalle-cliente" class="detalle-cliente" hidden></div>
+          </section>
+
+          <section id="modulo-reportes" class="modulo-admin" hidden>
+            <h2>Reportes de ventas</h2>
+            <form id="filtros-reporte" class="busqueda-admin"><label for="reporte-desde">Desde</label><input id="reporte-desde" type="date"><label for="reporte-hasta">Hasta</label><input id="reporte-hasta" type="date"><button type="submit">Consultar</button><a id="exportar-reporte" class="boton boton-secundario" href="/api/administracion/reportes.csv">Descargar CSV</a></form>
+            <div id="resumen-reporte" class="resumen-reporte"></div>
+            <h3>Productos vendidos</h3><div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody id="tabla-reporte-productos"></tbody></table></div>
+          </section>
+
+          <section id="modulo-envios" class="modulo-admin" hidden>
+            <h2>Envíos y formas de pago</h2>
+            <form id="formulario-envios" class="formulario-modulo">
+              <label for="minimo-envio-gratis">Pedido mínimo para envío gratis ($)</label><input id="minimo-envio-gratis" type="number" min="0" step="0.01" required>
+              <div id="zonas-configurables" class="zonas-configurables"></div>
+              <button id="agregar-zona-envio" type="button">Agregar zona</button>
+              <label for="formas-pago-configurables">Formas de pago (una por línea)</label><textarea id="formas-pago-configurables" required></textarea>
+              <button type="submit">Guardar configuración</button>
+            </form>
+          </section>
+
+          <section id="modulo-productos" class="modulo-admin" hidden>
+            <h2>Productos</h2>
+            <form id="formulario-producto">
+              <input id="producto-id" type="hidden">
+              <label for="producto-nombre">Nombre</label><input id="producto-nombre" required>
+              <label for="producto-descripcion">Descripción</label><textarea id="producto-descripcion" required></textarea>
+              <label for="producto-precio">Precio</label><input id="producto-precio" type="number" min="0.01" step="0.01" required>
+              <label for="producto-oferta">Precio de oferta (opcional)</label><input id="producto-oferta" type="number" min="0.01" step="0.01">
+              <label for="producto-stock">Stock</label><input id="producto-stock" type="number" min="0" step="1" required>
+              <label for="producto-mascota">Tipo de mascota</label><select id="producto-mascota"><option value="perro">Perro</option><option value="gato">Gato</option><option value="ambos">Ambos</option></select>
+              <label for="producto-nutricion">Información nutricional</label><textarea id="producto-nutricion"></textarea>
+              <label for="producto-presentaciones">Presentaciones</label><input id="producto-presentaciones">
+              <div class="campo-fotografia">
+                <label class="boton boton-fotografia" for="archivo-fotografia">Seleccionar fotografía</label>
+                <input id="archivo-fotografia" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="nombre-fotografia ayuda-fotografia error-fotografia">
+                <input id="producto-imagen" type="hidden">
+                <p id="nombre-fotografia" class="nombre-fotografia" aria-live="polite">Sin fotografía seleccionada</p>
+                <p id="ayuda-fotografia" class="texto-secundario">JPG, JPEG, PNG o WEBP. Máximo 5 MB.</p>
+                <div class="previsualizacion-fotografia"><img id="previsualizacion-producto" alt="Vista previa de la fotografía del producto" hidden><p id="aviso-previsualizacion">La fotografía seleccionada aparecerá aquí.</p></div>
+                <p id="error-fotografia" class="error-campo" aria-live="polite"></p>
+              </div>
+              <label for="producto-estado">Estado</label><select id="producto-estado"><option value="disponible">Disponible</option><option value="agotado">Agotado</option><option value="inactivo">Inactivo</option></select>
+              <div class="botones"><button type="submit">Guardar producto</button><button id="limpiar-producto" type="button">Limpiar</button></div>
+            </form>
+            <p id="mensaje-producto-admin" aria-live="polite"></p>
+            <div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Mascota</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-productos"></tbody></table></div>
+          </section>
         </div>
-        <label for="producto-estado">Estado</label><select id="producto-estado"><option value="disponible">Disponible</option><option value="agotado">Agotado</option><option value="inactivo">Inactivo</option></select>
-        <div class="botones"><button type="submit">Guardar producto</button><button id="limpiar-producto" type="button">Limpiar</button></div>
-      </form><p id="mensaje-producto-admin" class="error"></p>
-      <div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Mascota</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-productos"></tbody></table></div></section>
-      <section><h2>Clientes</h2><div class="tabla-contenedor"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th></tr></thead><tbody id="tabla-clientes"></tbody></table></div></section>
+      </div>
     </div>
   </main>
-  <footer class="pie-pagina"><div class="pie-interior"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.png" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div></div></footer>
+
+  <dialog id="modal-pedido" class="modal-admin">
+    <div class="modal-admin-cabecera"><h2>Detalle del pedido</h2><button id="cerrar-modal-pedido" type="button">Cerrar</button></div>
+    <div id="contenido-detalle-pedido"></div>
+    <form id="formulario-estado-pedido" class="formulario-modulo">
+      <input id="modal-pedido-id" type="hidden">
+      <label for="nuevo-estado-pedido">Siguiente estado</label><select id="nuevo-estado-pedido" required></select>
+      <label for="observacion-estado-pedido">Observación</label><textarea id="observacion-estado-pedido" maxlength="500"></textarea>
+      <label class="check-visible"><input id="observacion-visible" type="checkbox"> Mostrar observación al cliente</label>
+      <button type="submit">Guardar estado</button>
+    </form>
+  </dialog>
+
+  <footer class="pie-pagina"><div class="pie-interior">
+    <a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.png" alt="Logo oficial de Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
+    <nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/politica.html">Política de privacidad</a></nav>
+    <div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Administración Charqui · Quito, Ecuador.</p></div>
+  </div></footer>
 </body>
 </html>
-
-

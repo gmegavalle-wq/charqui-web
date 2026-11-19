@@ -1,11 +1,21 @@
-const express = require('express');
+﻿const express = require('express');
 const bcrypt = require('bcrypt');
 const { randomBytes } = require('crypto');
 const conexion = require('../base_datos');
 const verificarAdministrador = require('../middleware/administrador');
-const { tarifas, envioGratisDesde, zonasEnvioGratis, formasPago } = require('./envios');
+const { cargarConfiguracion } = require('./envios');
 
 const rutas = express.Router();
+const transiciones = {
+  recibido_y_confirmado: ['en_preparacion'],
+  en_preparacion: ['listo_para_despacho'],
+  listo_para_despacho: ['en_reparto_local'],
+  en_reparto_local: ['entregado'],
+  entregado: [],
+  en_tu_puerta: [],
+  cancelado: []
+};
+const estadosNuevos = Object.keys(transiciones).filter((estado) => estado !== 'en_tu_puerta');
 
 function correoValido(correo) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(correo || '').trim());
@@ -16,69 +26,101 @@ function telefonoValido(telefono) {
   return /^[+0-9 ()-]{7,20}$/.test(String(telefono || '')) && digitos.length >= 7 && digitos.length <= 15;
 }
 
+function coordenadasValidas(latitud, longitud) {
+  if ((latitud === '' || latitud == null) && (longitud === '' || longitud == null)) return true;
+  const lat = Number(latitud);
+  const lon = Number(longitud);
+  return Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
+}
+
 async function cargarDetalles(idPedido, base = conexion) {
   const [detalles] = await base.execute(
-    `SELECT d.producto_id, d.cantidad, d.subtotal, p.nombre
+    `SELECT d.producto_id, d.cantidad, d.subtotal,
+       ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2) AS precio_unitario, p.nombre
      FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
-     WHERE d.pedido_id = ?`,
-    [idPedido]
+     WHERE d.pedido_id = ? ORDER BY d.id`, [idPedido]
   );
   return detalles;
 }
 
-async function obtenerColumnasPedido(base) {
-  const [columnas] = await base.execute('SHOW COLUMNS FROM pedidos');
-  return new Set(columnas.map((columna) => columna.Field));
-}
-
-function completarCamposOpcionales(pedidos) {
-  return pedidos.map((pedido) => ({
-    ...pedido,
-    zona_entrega: pedido.zona_entrega ?? null,
-    costo_envio: pedido.costo_envio ?? null,
-    forma_pago: pedido.forma_pago ?? null,
-    pago_confirmado: pedido.pago_confirmado ?? null
-  }));
+async function cargarHistorial(idPedido, base = conexion, soloVisible = false) {
+  const [historial] = await base.execute(
+    `SELECT h.estado_anterior, h.estado_nuevo, h.fecha_hora, h.observacion,
+       u.nombre AS administrador
+     FROM historial_pedidos h LEFT JOIN usuarios u ON u.id = h.administrador_id
+     WHERE h.pedido_id = ? ${soloVisible ? 'AND h.visible_cliente = 1' : ''}
+     ORDER BY h.fecha_hora, h.id`, [idPedido]
+  );
+  return historial;
 }
 
 rutas.post('/', async (req, res) => {
-  const datos = req.body;
+  const datos = req.body || {};
   const cliente = datos.cliente || {};
   const articulos = datos.productos;
-  const zona = datos.zona_entrega;
-  const formaPago = datos.forma_pago;
+  const cedula = String(cliente.cedula || '').replace(/\D/g, '');
+  const direccion = String(datos.direccion_entrega || '').trim();
+  const zona = String(datos.zona_entrega || '');
+  const formaPago = String(datos.forma_pago || '');
+  const latitud = datos.latitud == null || datos.latitud === '' ? null : Number(datos.latitud);
+  const longitud = datos.longitud == null || datos.longitud === '' ? null : Number(datos.longitud);
 
   if (!String(cliente.nombre || '').trim() || !telefonoValido(cliente.telefono) || !correoValido(cliente.correo) ||
-      !String(datos.direccion_entrega || '').trim() || !datos.consentimiento || !Object.hasOwn(tarifas, zona) ||
-      !formasPago.includes(formaPago) || !Array.isArray(articulos) || !articulos.length) {
-    return res.status(400).json({ error: 'Revisa los datos del pedido y acepta el uso de tus datos.' });
+      !direccion || !datos.consentimiento || (cedula && !/^\d{6,20}$/.test(cedula)) ||
+      !coordenadasValidas(latitud, longitud) || !Array.isArray(articulos) || !articulos.length) {
+    return res.status(400).json({ error: 'Revisa tus datos, dirección y consentimiento antes de confirmar.' });
   }
 
   const correo = cliente.correo.trim().toLowerCase();
   const telefono = cliente.telefono.trim();
-  let connection;
-
+  let transaccion;
   try {
-    connection = await conexion.getConnection();
-    await connection.beginTransaction();
-    const [usuarios] = await connection.execute(
-      'SELECT id, rol FROM usuarios WHERE correo = ? FOR UPDATE', [correo]
+    transaccion = await conexion.getConnection();
+    await transaccion.beginTransaction();
+    const configuracion = await cargarConfiguracion(transaccion);
+    if (!Object.hasOwn(configuracion.tarifas, zona) || !configuracion.formas_pago.includes(formaPago)) {
+      const error = new Error('La zona o forma de pago ya no está disponible. Actualiza la página.');
+      error.status = 409;
+      throw error;
+    }
+
+    const [usuarios] = await transaccion.execute(
+      'SELECT id, rol, cedula FROM usuarios WHERE correo = ? FOR UPDATE', [correo]
     );
     let usuarioId;
     if (usuarios.length) {
-      if (usuarios[0].rol !== 'cliente') throw new Error('Ese correo no está disponible para pedidos.');
+      if (usuarios[0].rol !== 'cliente') {
+        const error = new Error('Ese correo no está disponible para pedidos.');
+        error.status = 409;
+        throw error;
+      }
       usuarioId = usuarios[0].id;
-      await connection.execute(
-        'UPDATE usuarios SET nombre = ?, telefono = ? WHERE id = ?',
-        [cliente.nombre.trim(), telefono, usuarioId]
+      if (cedula) {
+        const [duplicados] = await transaccion.execute('SELECT id FROM usuarios WHERE cedula = ? AND id <> ?', [cedula, usuarioId]);
+        if (duplicados.length) {
+          const error = new Error('Esa cédula ya está registrada con otro correo.');
+          error.status = 409;
+          throw error;
+        }
+      }
+      await transaccion.execute(
+        'UPDATE usuarios SET nombre = ?, telefono = ?, cedula = COALESCE(?, cedula) WHERE id = ?',
+        [cliente.nombre.trim(), telefono, cedula || null, usuarioId]
       );
     } else {
-      // El esquema exige contraseña, pero el checkout no crea cuentas con acceso.
+      if (cedula) {
+        const [duplicados] = await transaccion.execute('SELECT id FROM usuarios WHERE cedula = ? FOR UPDATE', [cedula]);
+        if (duplicados.length) {
+          const error = new Error('Esa cédula ya está registrada con otro correo.');
+          error.status = 409;
+          throw error;
+        }
+      }
       const claveAleatoria = randomBytes(32).toString('hex');
       const claveCifrada = await bcrypt.hash(claveAleatoria, 10);
-      const [nuevoUsuario] = await connection.execute(
-        "INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol) VALUES (?, ?, ?, ?, 'cliente')",
-        [cliente.nombre.trim(), correo, claveCifrada, telefono]
+      const [nuevoUsuario] = await transaccion.execute(
+        "INSERT INTO usuarios (nombre, correo, contrasena, telefono, cedula, rol) VALUES (?, ?, ?, ?, ?, 'cliente')",
+        [cliente.nombre.trim(), correo, claveCifrada, telefono, cedula || null]
       );
       usuarioId = nuevoUsuario.insertId;
     }
@@ -98,9 +140,8 @@ rutas.post('/', async (req, res) => {
     let subtotalPedido = 0;
     const detalles = [];
     for (const [id, cantidad] of cantidades) {
-      const [productos] = await connection.execute(
-        'SELECT id, nombre, precio, precio_oferta, stock, estado FROM productos WHERE id = ? FOR UPDATE',
-        [id]
+      const [productos] = await transaccion.execute(
+        'SELECT id, nombre, precio, precio_oferta, stock, estado FROM productos WHERE id = ? FOR UPDATE', [id]
       );
       const producto = productos[0];
       if (!producto || producto.estado !== 'disponible' || Number(producto.stock) < cantidad) {
@@ -114,136 +155,199 @@ rutas.post('/', async (req, res) => {
       detalles.push({ id, cantidad, subtotal, nombre: producto.nombre, stock: Number(producto.stock) });
     }
 
-    const envioGratis = zonasEnvioGratis.includes(zona) && subtotalPedido >= envioGratisDesde;
-    const costoEnvio = envioGratis ? 0 : Number(tarifas[zona]);
+    const envioGratis = configuracion.zonas_envio_gratis.includes(zona) && subtotalPedido >= configuracion.envio_gratis_desde;
+    const costoEnvio = envioGratis ? 0 : Number(configuracion.tarifas[zona]);
     const total = Number((subtotalPedido + costoEnvio).toFixed(2));
-    const columnasPedido = await obtenerColumnasPedido(connection);
-    const camposPedido = [
-      ['usuario_id', usuarioId],
-      ['direccion_entrega', datos.direccion_entrega.trim()],
-      ['estado', 'recibido_y_confirmado'],
-      ['total', total],
-      ['zona_entrega', zona],
-      ['costo_envio', costoEnvio],
-      ['forma_pago', formaPago]
-    ].filter(([campo]) => columnasPedido.has(campo));
-    const nombresCampos = camposPedido.map(([campo]) => `\`${campo}\``).join(', ');
-    const signos = camposPedido.map(() => '?').join(', ');
-    const [nuevoPedido] = await connection.execute(
-      `INSERT INTO pedidos (${nombresCampos}) VALUES (${signos})`,
-      camposPedido.map(([, valor]) => valor)
+    const campos = [
+      'usuario_id', 'direccion_entrega', 'estado', 'total', 'zona_entrega', 'costo_envio', 'forma_pago',
+      'provincia', 'ciudad', 'sector', 'calle_principal', 'numero_domicilio', 'calle_secundaria',
+      'referencia', 'latitud', 'longitud'
+    ];
+    const valores = [
+      usuarioId, direccion, 'recibido_y_confirmado', total, zona, costoEnvio, formaPago,
+      datos.provincia || null, datos.ciudad || null, datos.sector || null,
+      datos.calle_principal || null, datos.numero_domicilio || null, datos.calle_secundaria || null,
+      datos.referencia || null, latitud, longitud
+    ];
+    const [nuevoPedido] = await transaccion.execute(
+      `INSERT INTO pedidos (${campos.map((campo) => `\`${campo}\``).join(', ')})
+       VALUES (${campos.map(() => '?').join(', ')})`, valores
     );
 
     for (const detalle of detalles) {
-      await connection.execute(
+      await transaccion.execute(
         'INSERT INTO detalle_pedido (pedido_id, producto_id, cantidad, subtotal) VALUES (?, ?, ?, ?)',
         [nuevoPedido.insertId, detalle.id, detalle.cantidad, detalle.subtotal]
       );
       const stockNuevo = detalle.stock - detalle.cantidad;
-      await connection.execute(
+      await transaccion.execute(
         'UPDATE productos SET stock = ?, estado = ? WHERE id = ?',
         [stockNuevo, stockNuevo === 0 ? 'agotado' : 'disponible', detalle.id]
       );
+      await transaccion.execute(
+        `INSERT INTO movimientos_inventario
+         (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, pedido_id)
+         VALUES (?, 'venta', ?, ?, ?, ?, ?)`,
+        [detalle.id, detalle.cantidad, detalle.stock, stockNuevo, 'Descuento automático por pedido', nuevoPedido.insertId]
+      );
     }
+    await transaccion.execute(
+      `INSERT INTO historial_pedidos
+       (pedido_id, estado_anterior, estado_nuevo, observacion, visible_cliente)
+       VALUES (?, NULL, 'recibido_y_confirmado', 'Pedido creado desde la tienda.', 1)`, [nuevoPedido.insertId]
+    );
 
-    await connection.commit();
-    res.status(201).json({
-      id: nuevoPedido.insertId,
-      total,
-      subtotal: subtotalPedido,
-      costo_envio: costoEnvio,
-      zona_entrega: zona,
-      forma_pago: formaPago,
+    await transaccion.commit();
+    return res.status(201).json({
+      id: nuevoPedido.insertId, total, subtotal: subtotalPedido, costo_envio: costoEnvio,
+      zona_entrega: zona, forma_pago: formaPago,
       productos: detalles.map(({ id, cantidad, subtotal, nombre }) => ({ id, cantidad, subtotal, nombre }))
     });
   } catch (error) {
-    if (connection) {
-      try { await connection.rollback(); } catch (errorRollback) {}
-    }
-    if (error.code) console.error('Error de base de datos al registrar el pedido:', error.code);
+    if (transaccion) { try { await transaccion.rollback(); } catch (errorRollback) {} }
+    if (error.code) console.error('Error al registrar el pedido:', error.code);
     const estado = error.status || (error.code ? 500 : 400);
     const mensaje = error.code ? 'No se pudo registrar el pedido.' : error.message || 'No se pudo registrar el pedido.';
-    res.status(estado).json({ error: mensaje });
+    return res.status(estado).json({ error: mensaje });
   } finally {
-    if (connection) connection.release();
+    if (transaccion) transaccion.release();
   }
 });
 
 rutas.get('/cliente', async (req, res) => {
-  const dato = (req.query.correo || req.query.telefono || '').trim();
-  if (!dato) return res.status(400).json({ error: 'Escribe un correo o teléfono.' });
+  const numeroPedido = String(req.query.numero_pedido || '').trim();
+  const cedula = String(req.query.cedula || '').replace(/\D/g, '');
+  const correo = String(req.query.correo || '').trim().toLowerCase();
+  const telefono = String(req.query.telefono || '').trim();
+  if (!/^\d+$/.test(numeroPedido)) return res.status(400).json({ error: 'Escribe el número de pedido.' });
+  if ((!cedula || !/^\d{6,20}$/.test(cedula)) && !correo && !telefono) {
+    return res.status(400).json({ error: 'Verifica con tu cédula, correo o teléfono.' });
+  }
   try {
-    const [pedidos] = await conexion.execute(
-      `SELECT p.*, u.nombre, u.correo, u.telefono FROM pedidos p
-       JOIN usuarios u ON u.id = p.usuario_id
-       WHERE u.correo = ? OR u.telefono = ? ORDER BY p.fecha DESC`,
-      [dato.toLowerCase(), dato]
-    );
-    for (const pedido of pedidos) pedido.productos = await cargarDetalles(pedido.id);
-    res.status(200).json(completarCamposOpcionales(pedidos));
+    let consulta;
+    let parametros;
+    if (cedula) {
+      consulta = `SELECT p.*, u.nombre, u.correo, u.telefono
+        FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
+        WHERE p.id = ? AND u.cedula = ?`;
+      parametros = [numeroPedido, cedula];
+    } else {
+      consulta = `SELECT p.*, u.nombre, u.correo, u.telefono
+        FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
+        WHERE p.id = ? AND (u.correo = ? OR u.telefono = ?)`;
+      parametros = [numeroPedido, correo, telefono];
+    }
+    const [pedidos] = await conexion.execute(consulta, parametros);
+    if (!pedidos.length) return res.status(404).json({ error: 'No encontramos un pedido con esos datos de verificación.' });
+    const pedido = pedidos[0];
+    pedido.productos = await cargarDetalles(pedido.id);
+    pedido.historial = await cargarHistorial(pedido.id, conexion, true);
+    return res.json([pedido]);
   } catch (error) {
-    res.status(500).json({ error: 'No se pudieron buscar los pedidos.' });
+    console.error('Error al buscar el pedido del cliente:', error.code || 'Error');
+    return res.status(500).json({ error: 'No se pudo buscar el pedido.' });
   }
 });
 
 rutas.get('/', verificarAdministrador, async (req, res) => {
   try {
     const [pedidos] = await conexion.execute(
-      `SELECT p.*, u.nombre, u.correo, u.telefono FROM pedidos p
-       JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC`
+      `SELECT p.*, u.nombre, u.correo, u.telefono, u.cedula
+       FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC`
     );
-    for (const pedido of pedidos) pedido.productos = await cargarDetalles(pedido.id);
-    res.status(200).json(completarCamposOpcionales(pedidos));
+    for (const pedido of pedidos) {
+      pedido.productos = await cargarDetalles(pedido.id);
+      pedido.historial = await cargarHistorial(pedido.id);
+    }
+    return res.json(pedidos);
   } catch (error) {
-    res.status(500).json({ error: 'No se pudieron cargar los pedidos.' });
+    console.error('Error al cargar pedidos:', error.code || 'Error');
+    return res.status(500).json({ error: 'No se pudieron cargar los pedidos.' });
   }
 });
 
 rutas.put('/:id/estado', verificarAdministrador, async (req, res) => {
-  const estados = ['recibido_y_confirmado', 'en_preparacion', 'en_reparto_local', 'en_tu_puerta', 'cancelado'];
-  if (!estados.includes(req.body.estado)) return res.status(400).json({ error: 'El estado no es válido.' });
-  let connection;
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'El número de pedido no es válido.' });
+  const estadoNuevo = String(req.body.estado || '');
+  const observacion = String(req.body.observacion || '').trim().slice(0, 500) || null;
+  const visibleCliente = req.body.visible_cliente ? 1 : 0;
+  if (!estadosNuevos.includes(estadoNuevo)) return res.status(400).json({ error: 'El estado del pedido no es válido.' });
+  let transaccion;
   try {
-    connection = await conexion.getConnection();
-    await connection.beginTransaction();
-    const [pedidos] = await connection.execute('SELECT estado FROM pedidos WHERE id = ? FOR UPDATE', [req.params.id]);
-    if (!pedidos.length) {
-      await connection.rollback();
+    transaccion = await conexion.getConnection();
+    await transaccion.beginTransaction();
+    const [filas] = await transaccion.execute('SELECT estado FROM pedidos WHERE id = ? FOR UPDATE', [req.params.id]);
+    if (!filas.length) {
+      await transaccion.rollback();
       return res.status(404).json({ error: 'Pedido no encontrado.' });
     }
-    if (pedidos[0].estado === 'cancelado' && req.body.estado !== 'cancelado') {
-      await connection.rollback();
-      return res.status(400).json({ error: 'Un pedido cancelado no puede reabrirse.' });
+    const estadoAnterior = filas[0].estado;
+    const siguiente = transiciones[estadoAnterior]?.includes(estadoNuevo);
+    const cancelar = estadoNuevo === 'cancelado' && !['entregado', 'cancelado'].includes(estadoAnterior);
+    if (!siguiente && !cancelar) {
+      await transaccion.rollback();
+      return res.status(409).json({ error: 'El cambio no sigue el orden permitido. Avanza al siguiente estado o cancela el pedido.' });
     }
-    if (req.body.estado === 'cancelado' && pedidos[0].estado !== 'cancelado') {
-      const detalles = await cargarDetalles(req.params.id, connection);
+    if (cancelar) {
+      const [detalles] = await transaccion.execute(
+        `SELECT d.producto_id, d.cantidad, p.stock
+         FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
+         WHERE d.pedido_id = ? FOR UPDATE`, [req.params.id]
+      );
       for (const detalle of detalles) {
-        await connection.execute(
-          "UPDATE productos SET stock = stock + ?, estado = CASE WHEN estado = 'agotado' THEN 'disponible' ELSE estado END WHERE id = ?",
-          [detalle.cantidad, detalle.producto_id]
+        const anterior = Number(detalle.stock);
+        const nuevo = anterior + Number(detalle.cantidad);
+        await transaccion.execute(
+          "UPDATE productos SET stock = ?, estado = CASE WHEN estado = 'agotado' THEN 'disponible' ELSE estado END WHERE id = ?",
+          [nuevo, detalle.producto_id]
+        );
+        await transaccion.execute(
+          `INSERT INTO movimientos_inventario
+           (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, pedido_id, administrador_id)
+           VALUES (?, 'devolucion', ?, ?, ?, 'Devolución por cancelación', ?, ?)`,
+          [detalle.producto_id, detalle.cantidad, anterior, nuevo, req.params.id, req.administrador.id]
         );
       }
     }
-    await connection.execute('UPDATE pedidos SET estado = ? WHERE id = ?', [req.body.estado, req.params.id]);
-    await connection.commit();
-    res.status(200).json({ mensaje: 'Estado del pedido actualizado.' });
+    await transaccion.execute(
+      `UPDATE pedidos SET estado = ?,
+       salida_reparto = CASE WHEN ? = 'en_reparto_local' THEN COALESCE(salida_reparto, NOW()) ELSE salida_reparto END,
+       entregado_en = CASE WHEN ? = 'entregado' THEN NOW() ELSE entregado_en END WHERE id = ?`,
+      [estadoNuevo, estadoNuevo, estadoNuevo, req.params.id]
+    );
+    await transaccion.execute(
+      `INSERT INTO historial_pedidos
+       (pedido_id, estado_anterior, estado_nuevo, administrador_id, observacion, visible_cliente)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.params.id, estadoAnterior, estadoNuevo, req.administrador.id, observacion, visibleCliente]
+    );
+    await transaccion.commit();
+    return res.json({ mensaje: 'Estado actualizado.', estado: estadoNuevo });
   } catch (error) {
-    if (connection) await connection.rollback();
-    res.status(500).json({ error: 'No se pudo cambiar el estado del pedido.' });
+    if (transaccion) { try { await transaccion.rollback(); } catch (errorRollback) {} }
+    console.error('Error al actualizar el estado del pedido:', error.code || 'Error');
+    return res.status(error.code ? 500 : 400).json({ error: error.code ? 'No se pudo cambiar el estado del pedido.' : error.message });
   } finally {
-    if (connection) connection.release();
+    if (transaccion) transaccion.release();
   }
 });
 
 rutas.put('/:id/pago', verificarAdministrador, async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'El número de pedido no es válido.' });
   try {
     const [resultado] = await conexion.execute(
-      'UPDATE pedidos SET pago_confirmado = 1 WHERE id = ?', [req.params.id]
+      `UPDATE pedidos SET pago_confirmado = 1, pago_confirmado_en = NOW(), pago_confirmado_por = ?
+       WHERE id = ? AND pago_confirmado = 0`, [req.administrador.id, req.params.id]
     );
-    if (!resultado.affectedRows) return res.status(404).json({ error: 'Pedido no encontrado.' });
-    res.status(200).json({ mensaje: 'Pago confirmado.' });
+    if (!resultado.affectedRows) {
+      const [[pedido]] = await conexion.execute('SELECT id FROM pedidos WHERE id = ?', [req.params.id]);
+      if (!pedido) return res.status(404).json({ error: 'Pedido no encontrado.' });
+      return res.status(409).json({ error: 'El pago ya estaba confirmado.' });
+    }
+    return res.json({ mensaje: 'Pago confirmado.' });
   } catch (error) {
-    res.status(500).json({ error: 'No se pudo confirmar el pago.' });
+    console.error('Error al confirmar el pago:', error.code || 'Error');
+    return res.status(500).json({ error: 'No se pudo confirmar el pago.' });
   }
 });
 

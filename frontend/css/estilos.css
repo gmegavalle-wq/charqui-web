@@ -1886,6 +1886,125 @@ td button {
   }
 }
 
+/* Panel administrativo */
+.admin-pagina .encabezado-admin,
+.admin-pagina .administracion-layout,
+.admin-pagina .detalle-pedido-grid,
+.admin-pagina .fila-zona {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-pagina .encabezado-admin {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.admin-pagina .menu-admin {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  padding: .4rem 0 1rem;
+}
+
+.admin-pagina .menu-admin button,
+.admin-pagina .tabla-contenedor button,
+.admin-pagina .fila-zona button,
+.admin-pagina .modal-admin button {
+  min-height: 44px;
+  border: 1px solid var(--verde-claro);
+  border-radius: 12px;
+  background: var(--blanco-hueso);
+  color: var(--texto);
+  padding: .65rem .9rem;
+  cursor: pointer;
+}
+
+.admin-pagina .menu-admin button.activo,
+.admin-pagina .contenido-admin form button,
+.admin-pagina .encabezado-admin > button,
+.admin-pagina .modal-admin form button {
+  border: 0;
+  border-radius: 12px;
+  background: var(--verde);
+  color: var(--blanco-hueso);
+  min-height: 44px;
+  padding: .7rem 1rem;
+  cursor: pointer;
+}
+
+.admin-pagina .menu-admin button:hover,
+.admin-pagina .tabla-contenedor button:hover,
+.admin-pagina .fila-zona button:hover {
+  background: var(--verde-claro);
+  color: var(--texto);
+}
+
+.admin-pagina .contenido-admin,
+.admin-pagina .login-admin,
+.admin-pagina .formulario-modulo,
+.admin-pagina .detalle-cliente,
+.admin-pagina .indicador-admin,
+.admin-pagina .resumen-reporte article {
+  border: 1px solid var(--verde-claro);
+  border-radius: 18px;
+  background: var(--blanco-hueso);
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgb(43 43 43 / 8%);
+}
+
+.admin-pagina .indicadores-admin,
+.admin-pagina .resumen-reporte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: .8rem;
+}
+
+.admin-pagina .indicador-admin {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  color: var(--texto);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-pagina .indicador-admin strong,
+.admin-pagina .resumen-reporte strong { color: var(--verde); font-size: 1.35rem; }
+.admin-pagina .resumen-reporte article { display: flex; flex-direction: column; gap: .5rem; }
+
+.admin-pagina .tabla-contenedor { max-width: 100%; overflow-x: auto; border-radius: 14px; }
+.admin-pagina table { width: 100%; border-collapse: collapse; min-width: 680px; }
+.admin-pagina th, .admin-pagina td { padding: .75rem; border-bottom: 1px solid var(--verde-claro); text-align: left; }
+.admin-pagina tbody tr:nth-child(even) { background: rgb(159 160 118 / 15%); }
+.admin-pagina .filtros-admin,
+.admin-pagina .busqueda-admin { display: grid; gap: .65rem; margin-bottom: 1.2rem; }
+.admin-pagina .formulario-modulo { display: grid; gap: .75rem; margin: 1.25rem 0; }
+.admin-pagina input, .admin-pagina select, .admin-pagina textarea { width: 100%; min-height: 44px; }
+.admin-pagina .fila-zona { grid-template-columns: 1fr; border: 1px solid var(--verde-claro); border-radius: 14px; padding: .8rem; margin: .7rem 0; }
+.admin-pagina .fila-zona label { display: grid; gap: .35rem; }
+.admin-pagina .check-visible { display: flex; align-items: center; gap: .5rem; }
+.admin-pagina .check-visible input { width: 20px; min-height: 20px; }
+.admin-pagina .modal-admin { width: min(94vw, 900px); max-height: 90vh; overflow: auto; border: 1px solid var(--verde-claro); border-radius: 20px; background: var(--blanco-hueso); color: var(--texto); padding: 1rem; }
+.admin-pagina .modal-admin::backdrop { background: rgb(43 43 43 / 55%); }
+.admin-pagina .modal-admin-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.admin-pagina .historial-admin { padding-left: 1.4rem; }
+.admin-pagina [hidden] { display: none !important; }
+
+@media (min-width: 768px) {
+  .admin-pagina .administracion-layout { grid-template-columns: 190px minmax(0, 1fr); align-items: start; }
+  .admin-pagina .menu-admin { position: sticky; top: 90px; display: grid; overflow: visible; }
+  .admin-pagina .detalle-pedido-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-pagina .fila-zona { grid-template-columns: 1.2fr .8fr 1.5fr auto; align-items: end; }
+  .admin-pagina .filtros-admin, .admin-pagina .busqueda-admin { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+}
+
+@media (min-width: 1024px) {
+  .admin-pagina .contenido-admin { padding: 1.5rem; }
+  .admin-pagina .detalle-pedido-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

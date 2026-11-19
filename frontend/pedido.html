@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,7 +16,19 @@
       <label for="nombre">Nombre completo</label><input id="nombre" name="nombre" aria-describedby="error-nombre" required><small id="error-nombre" class="error-campo" aria-live="polite"></small>
       <label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel" aria-describedby="error-telefono" required><small id="error-telefono" class="error-campo" aria-live="polite"></small>
       <label for="correo">Correo electrónico</label><input id="correo" name="correo" type="email" aria-describedby="error-correo" required><small id="error-correo" class="error-campo" aria-live="polite"></small>
+      <label for="cedula">Cédula (opcional)</label><input id="cedula" name="cedula" inputmode="numeric" pattern="[0-9]{6,20}" aria-describedby="ayuda-cedula"><small id="ayuda-cedula" class="texto-secundario">Si la registras, podrás consultar el pedido con su número.</small>
       <label for="direccion">Dirección exacta</label><textarea id="direccion" name="direccion" aria-describedby="error-direccion" required></textarea><small id="error-direccion" class="error-campo" aria-live="polite"></small>
+      <fieldset class="direccion-detallada"><legend>Detalles adicionales de entrega (opcionales)</legend>
+        <label for="provincia">Provincia</label><input id="provincia" name="provincia">
+        <label for="ciudad">Ciudad</label><input id="ciudad" name="ciudad">
+        <label for="sector">Sector o barrio</label><input id="sector" name="sector">
+        <label for="calle-principal">Calle principal</label><input id="calle-principal" name="calle_principal">
+        <label for="numero-domicilio">Número de casa o edificio</label><input id="numero-domicilio" name="numero_domicilio">
+        <label for="calle-secundaria">Calle secundaria</label><input id="calle-secundaria" name="calle_secundaria">
+        <label for="referencia">Referencia</label><input id="referencia" name="referencia">
+        <label for="latitud">Latitud (opcional)</label><input id="latitud" name="latitud" type="number" step="any" min="-90" max="90">
+        <label for="longitud">Longitud (opcional)</label><input id="longitud" name="longitud" type="number" step="any" min="-180" max="180">
+      </fieldset>
       <label for="zona">Zona de entrega</label><select id="zona" name="zona" aria-describedby="error-zona" required></select><small id="error-zona" class="error-campo" aria-live="polite"></small>
       <label for="forma-pago">Forma de pago</label><select id="forma-pago" name="forma_pago" aria-describedby="error-forma-pago" required></select><small id="error-forma-pago" class="error-campo" aria-live="polite"></small>
       <label class="etiqueta-consentimiento"><input id="consentimiento" type="checkbox" aria-describedby="error-consentimiento" required> Acepto el uso de mis datos según la <a href="/politica.html">política de privacidad</a>.</label><small id="error-consentimiento" class="error-campo" aria-live="polite"></small>
@@ -29,5 +41,3 @@
   <a class="whatsapp-flotante" href="https://wa.me/593994324874" data-whatsapp aria-label="Escríbenos por WhatsApp">WhatsApp</a>
 </body>
 </html>
-
-

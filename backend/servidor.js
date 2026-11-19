@@ -20,6 +20,7 @@ servidor.use('/api/auth', require('./rutas/autenticacion'));
 servidor.use('/api/productos', require('./rutas/productos'));
 servidor.use('/api/ofertas', require('./rutas/ofertas'));
 servidor.use('/api/clientes', require('./rutas/clientes'));
+servidor.use('/api/administracion', require('./rutas/administracion'));
 servidor.use('/api/pedidos', require('./rutas/pedidos'));
 servidor.use('/api/envios', require('./rutas/envios'));
 

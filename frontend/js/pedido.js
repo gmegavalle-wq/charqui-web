@@ -1,4 +1,4 @@
-let configuracionEnvio = { tarifas: {}, envio_gratis_desde: 20, zonas_envio_gratis: [], formas_pago: [] };
+﻿let configuracionEnvio = { tarifas: {}, envio_gratis_desde: 20, zonas_envio_gratis: [], formas_pago: [] };
 let productosPedido = [];
 
 function mostrarErrorCampo(campo) {
@@ -90,9 +90,19 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
     cliente: {
       nombre: document.getElementById('nombre').value.trim(),
       telefono,
-      correo: document.getElementById('correo').value.trim()
+      correo: document.getElementById('correo').value.trim(),
+      cedula: document.getElementById('cedula').value.trim()
     },
     direccion_entrega: document.getElementById('direccion').value.trim(),
+    provincia: document.getElementById('provincia').value.trim(),
+    ciudad: document.getElementById('ciudad').value.trim(),
+    sector: document.getElementById('sector').value.trim(),
+    calle_principal: document.getElementById('calle-principal').value.trim(),
+    numero_domicilio: document.getElementById('numero-domicilio').value.trim(),
+    calle_secundaria: document.getElementById('calle-secundaria').value.trim(),
+    referencia: document.getElementById('referencia').value.trim(),
+    latitud: document.getElementById('latitud').value || null,
+    longitud: document.getElementById('longitud').value || null,
     zona_entrega: document.getElementById('zona').value,
     forma_pago: document.getElementById('forma-pago').value,
     consentimiento: document.getElementById('consentimiento').checked,
