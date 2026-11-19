@@ -2,22 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Administración | Charqui</title><link rel="icon" href="/img/logo.jpg" type="image/jpeg">
+  <title>Administración | Charqui</title><link rel="icon" href="/img/logo.png" type="image/png">
   <link rel="stylesheet" href="/css/estilos.css"><script src="/js/visual.js" defer></script><script src="/js/admin.js" defer></script>
 </head>
 <body>
-  <header class="barra-superior"><div class="barra-interior"><a class="marca" href="/" aria-label="Charqui, inicio"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo circular de Charqui con huella"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
+  <header class="barra-superior"><div class="barra-interior"><a class="marca" href="/" aria-label="Charqui, inicio"><img class="logo-imagen" src="/img/logo.png" alt="Logo circular de Charqui con huella"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
     <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav>
     <div class="acciones-cabecera"><a class="enlace-carrito" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a></nav></details></div>
   </div></header>
   <main class="contenido-pagina admin-pagina">
-    <section id="acceso-admin"><h1>Administración</h1><form id="formulario-login">
+    <section id="acceso-admin" class="login-admin"><p class="sobrelinea">ÁREA PRIVADA</p><h1>Administración</h1><p class="texto-secundario">Ingresa para gestionar pedidos, productos y clientes de Charqui.</p><form id="formulario-login">
       <label for="correo-admin">Correo</label><input id="correo-admin" type="email" required>
       <label for="contrasena-admin">Contraseña</label><input id="contrasena-admin" type="password" required>
       <button type="submit">Iniciar sesión</button>
     </form><p id="mensaje-admin" class="error" aria-live="polite"></p></section>
     <div id="panel-admin" hidden>
-      <div class="botones"><h1>Panel de administración</h1><button id="cerrar-sesion" type="button">Cerrar sesión</button></div>
+      <div class="botones encabezado-admin"><div><p class="sobrelinea">CHARQUI · QUITO</p><h1>Panel de administración</h1></div><button id="cerrar-sesion" type="button">Cerrar sesión</button></div>
       <section><h2>Pedidos</h2><div class="tabla-contenedor"><table><thead><tr><th>N.º</th><th>Cliente</th><th>Fecha</th><th>Productos</th><th>Dirección</th><th>Zona y envío</th><th>Forma de pago</th><th>Total</th><th>Pago</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-pedidos"></tbody></table></div></section>
       <section><h2>Productos</h2><form id="formulario-producto">
         <input id="producto-id" type="hidden">
@@ -37,7 +37,7 @@
       <section><h2>Clientes</h2><div class="tabla-contenedor"><table><thead><tr><th>Nombre</th><th>Correo</th><th>Teléfono</th></tr></thead><tbody id="tabla-clientes"></tbody></table></div></section>
     </div>
   </main>
-  <footer class="pie-pagina"><div class="pie-interior"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.jpg" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div></div></footer>
+  <footer class="pie-pagina"><div class="pie-interior"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.png" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div></div></footer>
 </body>
 </html>
 
