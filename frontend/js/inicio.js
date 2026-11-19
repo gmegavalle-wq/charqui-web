@@ -22,6 +22,7 @@ async function cargarOfertas() {
           <a class="boton boton-principal boton-ancho" href="/producto.html?id=${producto.id}">Ver producto</a></div>
         </article>`).join('')
       : '<p class="sin-productos">Pronto encontrarás productos destacados en nuestro catálogo.</p>';
+    contenedor.querySelectorAll('.producto-imagen').forEach(prepararImagenAlternativa);
   } catch (error) {
     mensaje.textContent = 'No se pudieron cargar las ofertas.';
     mensaje.classList.add('error');

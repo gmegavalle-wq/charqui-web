@@ -1,4 +1,6 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
+const { randomBytes } = require('crypto');
 const conexion = require('../base_datos');
 const verificarAdministrador = require('../middleware/administrador');
 const { tarifas, envioGratisDesde, zonasEnvioGratis, formasPago } = require('./envios');
@@ -22,6 +24,21 @@ async function cargarDetalles(idPedido, base = conexion) {
     [idPedido]
   );
   return detalles;
+}
+
+async function obtenerColumnasPedido(base) {
+  const [columnas] = await base.execute('SHOW COLUMNS FROM pedidos');
+  return new Set(columnas.map((columna) => columna.Field));
+}
+
+function completarCamposOpcionales(pedidos) {
+  return pedidos.map((pedido) => ({
+    ...pedido,
+    zona_entrega: pedido.zona_entrega ?? null,
+    costo_envio: pedido.costo_envio ?? null,
+    forma_pago: pedido.forma_pago ?? null,
+    pago_confirmado: pedido.pago_confirmado ?? null
+  }));
 }
 
 rutas.post('/', async (req, res) => {
@@ -56,9 +73,12 @@ rutas.post('/', async (req, res) => {
         [cliente.nombre.trim(), telefono, usuarioId]
       );
     } else {
+      // El esquema exige contraseña, pero el checkout no crea cuentas con acceso.
+      const claveAleatoria = randomBytes(32).toString('hex');
+      const claveCifrada = await bcrypt.hash(claveAleatoria, 10);
       const [nuevoUsuario] = await connection.execute(
-        "INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol) VALUES (?, ?, NULL, ?, 'cliente')",
-        [cliente.nombre.trim(), correo, telefono]
+        "INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol) VALUES (?, ?, ?, ?, 'cliente')",
+        [cliente.nombre.trim(), correo, claveCifrada, telefono]
       );
       usuarioId = nuevoUsuario.insertId;
     }
@@ -68,7 +88,9 @@ rutas.post('/', async (req, res) => {
       const id = Number(articulo.id);
       const cantidad = Number(articulo.cantidad);
       if (!Number.isInteger(id) || id < 1 || !Number.isInteger(cantidad) || cantidad < 1) {
-        throw new Error('Hay un producto o cantidad no válida.');
+        const error = new Error('Hay un producto o cantidad no válida.');
+        error.status = 400;
+        throw error;
       }
       cantidades.set(id, (cantidades.get(id) || 0) + cantidad);
     }
@@ -82,7 +104,9 @@ rutas.post('/', async (req, res) => {
       );
       const producto = productos[0];
       if (!producto || producto.estado !== 'disponible' || Number(producto.stock) < cantidad) {
-        throw new Error('Un producto está agotado o no tiene suficiente stock.');
+        const error = new Error('Un producto está agotado o no tiene suficiente stock.');
+        error.status = 409;
+        throw error;
       }
       const precio = producto.precio_oferta == null ? Number(producto.precio) : Number(producto.precio_oferta);
       const subtotal = Number((precio * cantidad).toFixed(2));
@@ -93,11 +117,21 @@ rutas.post('/', async (req, res) => {
     const envioGratis = zonasEnvioGratis.includes(zona) && subtotalPedido >= envioGratisDesde;
     const costoEnvio = envioGratis ? 0 : Number(tarifas[zona]);
     const total = Number((subtotalPedido + costoEnvio).toFixed(2));
+    const columnasPedido = await obtenerColumnasPedido(connection);
+    const camposPedido = [
+      ['usuario_id', usuarioId],
+      ['direccion_entrega', datos.direccion_entrega.trim()],
+      ['estado', 'recibido_y_confirmado'],
+      ['total', total],
+      ['zona_entrega', zona],
+      ['costo_envio', costoEnvio],
+      ['forma_pago', formaPago]
+    ].filter(([campo]) => columnasPedido.has(campo));
+    const nombresCampos = camposPedido.map(([campo]) => `\`${campo}\``).join(', ');
+    const signos = camposPedido.map(() => '?').join(', ');
     const [nuevoPedido] = await connection.execute(
-      `INSERT INTO pedidos
-       (usuario_id, direccion_entrega, estado, total, zona_entrega, costo_envio, forma_pago)
-       VALUES (?, ?, 'recibido_y_confirmado', ?, ?, ?, ?)`,
-      [usuarioId, datos.direccion_entrega.trim(), total, zona, costoEnvio, formaPago]
+      `INSERT INTO pedidos (${nombresCampos}) VALUES (${signos})`,
+      camposPedido.map(([, valor]) => valor)
     );
 
     for (const detalle of detalles) {
@@ -123,8 +157,13 @@ rutas.post('/', async (req, res) => {
       productos: detalles.map(({ id, cantidad, subtotal, nombre }) => ({ id, cantidad, subtotal, nombre }))
     });
   } catch (error) {
-    if (connection) await connection.rollback();
-    res.status(400).json({ error: error.message || 'No se pudo registrar el pedido.' });
+    if (connection) {
+      try { await connection.rollback(); } catch (errorRollback) {}
+    }
+    if (error.code) console.error('Error de base de datos al registrar el pedido:', error.code);
+    const estado = error.status || (error.code ? 500 : 400);
+    const mensaje = error.code ? 'No se pudo registrar el pedido.' : error.message || 'No se pudo registrar el pedido.';
+    res.status(estado).json({ error: mensaje });
   } finally {
     if (connection) connection.release();
   }
@@ -141,7 +180,7 @@ rutas.get('/cliente', async (req, res) => {
       [dato.toLowerCase(), dato]
     );
     for (const pedido of pedidos) pedido.productos = await cargarDetalles(pedido.id);
-    res.status(200).json(pedidos);
+    res.status(200).json(completarCamposOpcionales(pedidos));
   } catch (error) {
     res.status(500).json({ error: 'No se pudieron buscar los pedidos.' });
   }
@@ -154,7 +193,7 @@ rutas.get('/', verificarAdministrador, async (req, res) => {
        JOIN usuarios u ON u.id = p.usuario_id ORDER BY p.fecha DESC`
     );
     for (const pedido of pedidos) pedido.productos = await cargarDetalles(pedido.id);
-    res.status(200).json(pedidos);
+    res.status(200).json(completarCamposOpcionales(pedidos));
   } catch (error) {
     res.status(500).json({ error: 'No se pudieron cargar los pedidos.' });
   }

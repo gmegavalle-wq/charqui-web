@@ -14,6 +14,16 @@ function escaparHtml(texto) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+async function leerRespuestaJson(respuesta) {
+  const texto = await respuesta.text();
+  try {
+    return texto ? JSON.parse(texto) : {};
+  } catch (error) {
+    const ruta = new URL(respuesta.url).pathname;
+    throw new Error(`El servidor devolvió una respuesta no válida (HTTP ${respuesta.status}) para ${ruta}.`);
+  }
+}
+
 async function cargarResumen() {
   const carrito = JSON.parse(localStorage.getItem('charqui_carrito') || '[]');
   const resumen = document.getElementById('resumen-pedido');
@@ -24,7 +34,8 @@ async function cargarResumen() {
   }
 
   const respuestaEnvio = await fetch('/api/envios');
-  configuracionEnvio = await respuestaEnvio.json();
+  configuracionEnvio = await leerRespuestaJson(respuestaEnvio);
+  if (!respuestaEnvio.ok) throw new Error(configuracionEnvio.error || 'No se pudo cargar la configuración de entrega.');
   const zonas = document.getElementById('zona');
   zonas.innerHTML = '<option value="">Elige una zona</option>' +
     Object.keys(configuracionEnvio.tarifas || {}).map((zona) =>
@@ -38,7 +49,7 @@ async function cargarResumen() {
 
   productosPedido = await Promise.all(carrito.map(async (item) => {
     const respuesta = await fetch(`/api/productos/${item.id}`);
-    const producto = await respuesta.json();
+    const producto = await leerRespuestaJson(respuesta);
     if (!respuesta.ok) throw new Error(producto.error);
     return { id: producto.id, nombre: producto.nombre, cantidad: item.cantidad,
       precio: Number(producto.precio_oferta || producto.precio) };
@@ -92,7 +103,7 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
     const respuesta = await fetch('/api/pedidos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
     });
-    const pedido = await respuesta.json();
+    const pedido = await leerRespuestaJson(respuesta);
     if (!respuesta.ok) throw new Error(pedido.error || 'No se pudo registrar el pedido.');
     localStorage.removeItem('charqui_carrito');
     window.dispatchEvent(new Event('charqui-carrito-actualizado'));

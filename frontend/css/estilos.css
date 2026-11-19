@@ -533,6 +533,7 @@ p {
 
 .imagen-producto-enlace {
   display: block;
+  aspect-ratio: 1;
   overflow: hidden;
   background: var(--suave);
 }
@@ -546,6 +547,27 @@ p {
   font-size: 0;
   object-fit: contain;
   transition: transform 280ms ease;
+}
+
+.imagen-alternativa {
+  display: grid;
+  width: 100%;
+  min-height: 150px;
+  padding: 1rem;
+  place-items: center;
+  background: var(--suave);
+  color: var(--oliva);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.imagen-producto-enlace .imagen-alternativa {
+  height: 100%;
+}
+
+.ficha-imagen .imagen-alternativa {
+  min-height: 300px;
+  aspect-ratio: 1;
 }
 
 .tarjeta-producto:hover .producto-imagen {
@@ -1022,10 +1044,24 @@ p {
 }
 
 .imagen-carrito {
-  width: 76px;
+  width: 100%;
   aspect-ratio: 1;
   background: var(--crema);
   object-fit: contain;
+}
+
+.imagen-carrito-marco {
+  width: 76px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--crema);
+}
+
+.imagen-carrito-marco .imagen-alternativa {
+  min-height: 0;
+  height: 100%;
+  padding: 0.25rem;
+  font-size: 0.68rem;
 }
 
 .datos-linea-carrito h2 {
@@ -1443,6 +1479,72 @@ input[type="checkbox"] {
   gap: 0 1.1rem;
 }
 
+.admin-pagina #formulario-producto .campo-fotografia {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 0.2rem;
+  margin: 0.3rem 0 1rem;
+}
+
+.campo-fotografia > label.boton-fotografia {
+  width: fit-content;
+  min-height: 46px;
+  margin: 0;
+  color: var(--marfil);
+  cursor: pointer;
+}
+
+.campo-fotografia input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.campo-fotografia:focus-within .boton-fotografia {
+  outline: 3px solid var(--tierra);
+  outline-offset: 3px;
+}
+
+.nombre-fotografia {
+  margin: 0.55rem 0 0;
+  color: var(--verde-profundo);
+  font-size: 0.9rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.previsualizacion-fotografia {
+  display: grid;
+  min-height: 190px;
+  margin-top: 0.8rem;
+  padding: 1rem;
+  place-items: center;
+  border: 1px dashed var(--linea);
+  border-radius: 14px;
+  background: var(--crema);
+  color: var(--oliva);
+  text-align: center;
+}
+
+.previsualizacion-fotografia img {
+  width: min(100%, 360px);
+  height: 260px;
+  object-fit: contain;
+}
+
+.previsualizacion-fotografia p {
+  margin: 0;
+}
+
+.mensaje-exito {
+  color: var(--verde-profundo);
+  font-weight: 700;
+}
+
 .admin-pagina #formulario-producto .botones {
   grid-column: 1 / -1;
 }
@@ -1647,6 +1749,10 @@ td button {
   }
 
   .imagen-carrito {
+    width: 100%;
+  }
+
+  .imagen-carrito-marco {
     width: 98px;
   }
 

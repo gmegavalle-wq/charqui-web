@@ -31,6 +31,17 @@ document.querySelectorAll('.logo-imagen').forEach((imagen) => {
   if (imagen.complete && imagen.naturalWidth === 0) imagen.hidden = true;
 });
 
+function prepararImagenAlternativa(imagen) {
+  imagen.addEventListener('error', () => {
+    const alternativa = document.createElement('span');
+    alternativa.className = 'imagen-alternativa';
+    alternativa.setAttribute('role', 'img');
+    alternativa.setAttribute('aria-label', `Fotografía no disponible para ${imagen.alt || 'este producto'}`);
+    alternativa.textContent = 'Fotografía no disponible';
+    imagen.replaceWith(alternativa);
+  }, { once: true });
+}
+
 if ('IntersectionObserver' in window) {
   const observador = new IntersectionObserver((entradas) => {
     entradas.forEach((entrada) => {

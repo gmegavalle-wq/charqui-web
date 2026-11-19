@@ -37,11 +37,12 @@ async function mostrarCarrito() {
     );
     contenedor.innerHTML = `<div class="lista-carrito">${validas.map((item) => {
         const precio = Number(item.producto.precio_oferta || item.producto.precio);
-        return `<article class="linea-carrito"><img class="imagen-carrito" src="/img/${encodeURIComponent(item.producto.imagen || '')}" alt="${escaparHtml(item.producto.nombre)}">
+        return `<article class="linea-carrito"><div class="imagen-carrito-marco"><img class="imagen-carrito" src="/img/${encodeURIComponent(item.producto.imagen || '')}" alt="${escaparHtml(item.producto.nombre)}"></div>
           <div class="datos-linea-carrito"><h2>${escaparHtml(item.producto.nombre)}</h2><p>$${precio.toFixed(2)} por unidad</p>
           <label class="etiqueta-cantidad" for="cantidad-${item.id}">Cantidad</label><input id="cantidad-${item.id}" class="cantidad-carrito" data-id="${item.id}" type="number" min="1" max="${item.producto.stock}" value="${item.cantidad}" aria-label="Cantidad de ${escaparHtml(item.producto.nombre)}"></div>
           <div class="total-linea-carrito"><strong>$${(precio * item.cantidad).toFixed(2)}</strong><button class="boton-texto quitar-carrito" data-id="${item.id}" type="button">Eliminar</button></div></article>`;
       }).join('')}</div>`;
+    contenedor.querySelectorAll('.imagen-carrito').forEach(prepararImagenAlternativa);
     document.getElementById('total-carrito').textContent = `$${subtotal.toFixed(2)}`;
     const respuestaEnvio = await fetch('/api/envios');
     const configuracion = await respuestaEnvio.json();

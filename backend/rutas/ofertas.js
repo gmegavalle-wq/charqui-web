@@ -12,6 +12,9 @@ rutas.get('/', async (req, res) => {
     );
     res.status(200).json(productos);
   } catch (error) {
+    if (error.code === 'ER_BAD_FIELD_ERROR' && error.message.includes('precio_oferta')) {
+      return res.status(200).json([]);
+    }
     res.status(500).json({ error: 'No se pudieron cargar las ofertas.' });
   }
 });

@@ -8,6 +8,10 @@ function escaparHtml(texto) {
 function mostrarCatalogo() {
   const mascota = document.getElementById('filtro-mascota').value;
   const lista = document.getElementById('productos');
+  if (!productosCatalogo.length) {
+    lista.innerHTML = '<p class="sin-productos">Aún no hay productos disponibles en el catálogo.</p>';
+    return;
+  }
   const visibles = productosCatalogo.filter((producto) =>
     mascota === 'todos' || producto.tipo_mascota === mascota || producto.tipo_mascota === 'ambos'
   );
@@ -23,6 +27,7 @@ function mostrarCatalogo() {
       <a class="boton boton-principal boton-ancho ${agotado ? 'boton-desactivado' : ''}" href="/producto.html?id=${producto.id}" ${agotado ? 'aria-label="Producto agotado: ' + escaparHtml(producto.nombre) + '"' : ''}>${agotado ? 'Ver detalles' : 'Ver producto'}</a></div>
     </article>`;
   }).join('') || '<p>No hay productos para este filtro.</p>';
+  lista.querySelectorAll('.producto-imagen').forEach(prepararImagenAlternativa);
 }
 
 async function cargarCatalogo() {

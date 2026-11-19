@@ -41,6 +41,7 @@ async function cargarProducto() {
       <p class="disponibilidad ${Number(producto.stock) > 0 ? 'disponible' : 'agotado'}">${Number(producto.stock) > 0 ? 'Disponible' : 'Agotado'}</p>
       <button class="boton boton-principal" id="anadir-carrito" type="button" ${Number(producto.stock) < 1 ? 'disabled' : ''}>Añadir al carrito</button></div></div>
       <section class="informacion-nutricional"><h2>Información nutricional</h2><p>${escaparHtml(producto.info_nutricional || 'No especificada.')}</p><h3>Presentaciones</h3><p>${escaparHtml(producto.presentaciones || 'Consultar disponibilidad.')}</p></section>`;
+    ficha.querySelectorAll('.producto-imagen').forEach(prepararImagenAlternativa);
     document.getElementById('anadir-carrito').addEventListener('click', () => guardarEnCarrito(producto));
   } catch (error) {
     ficha.textContent = 'No se pudo cargar el producto.';
