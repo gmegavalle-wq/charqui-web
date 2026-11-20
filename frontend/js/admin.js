@@ -66,7 +66,7 @@ function filtrosPedidos() {
 async function cargarPedidos() {
   const pedidos = await pedir(`/api/administracion/pedidos?${filtrosPedidos()}`);
   document.getElementById('tabla-pedidos').innerHTML = pedidos.length ? pedidos.map((pedido) => `
-    <tr><td>#${pedido.id}</td><td>${escaparHtml(pedido.nombre)}<br>${escaparHtml(pedido.telefono)}</td>
+    <tr><td>#${pedido.id}${pedido.cotizacion_mayorista_id ? `<br><small>Mayorista · Cot. #${pedido.cotizacion_mayorista_id}</small>` : ''}</td><td>${escaparHtml(pedido.nombre)}<br>${escaparHtml(pedido.telefono)}</td>
     <td>${escaparHtml(pedido.fecha)}</td><td>$${Number(pedido.total).toFixed(2)}</td>
     <td>${Number(pedido.pago_confirmado) ? 'Confirmado' : 'Pendiente'}</td>
     <td><span class="estado-etiqueta">${escaparHtml(nombresEstado[pedido.estado] || 'En tu Puerta (anterior)')}</span></td>
@@ -90,19 +90,20 @@ function siguientesEstados(estado) {
 async function abrirPedido(id) {
   try {
     const pedido = await pedir(`/api/administracion/pedidos/${id}`);
-    const productos = pedido.productos.map((item) => `<tr><td>${escaparHtml(item.nombre)}</td><td>${item.cantidad}</td><td>$${Number(item.precio_unitario).toFixed(2)}</td><td>$${Number(item.subtotal).toFixed(2)}</td></tr>`).join('');
+    const productos = pedido.productos.map((item) => `<tr><td>${escaparHtml(item.nombre)}</td><td>${item.cantidad}</td><td>$${Number(item.precio_unitario).toFixed(item.precio_mayorista ? 3 : 2)}</td><td>$${Number(item.subtotal).toFixed(2)}</td></tr>`).join('');
     const historial = pedido.historial.length ? pedido.historial.map((item) => `
       <li><strong>${escaparHtml(nombresEstado[item.estado_nuevo] || item.estado_nuevo)}</strong> · ${escaparHtml(item.fecha_hora)} · ${escaparHtml(item.administrador || 'Tienda')}
       ${item.observacion ? `<p>${escaparHtml(item.observacion)}${item.visible_cliente ? ' · Visible al cliente' : ''}</p>` : ''}</li>`).join('') : '<li>Sin historial anterior registrado.</li>';
     const pago = Number(pedido.pago_confirmado) ? `Confirmado · ${escaparHtml(pedido.pago_confirmado_en || '')}` : '<button id="confirmar-pago-detalle" type="button">Confirmar pago</button>';
     const gps = pedido.latitud != null && pedido.longitud != null ? `${pedido.latitud}, ${pedido.longitud}` : 'No registradas';
+    const condicionesMayoristas = pedido.cotizacion_mayorista_id ? `<section class="detalle-cotizacion-pedido"><h3>Condiciones mayoristas</h3><p>Cotización #${pedido.cotizacion_mayorista_id} · Entrega prevista: ${escaparHtml(pedido.fecha_entrega_mayorista)}</p><p>Descuento: $${Number(pedido.descuento_mayorista).toFixed(2)} · Envío: $${Number(pedido.envio_mayorista).toFixed(2)}</p><p>${escaparHtml(pedido.condiciones_mayoristas || '')}</p><button id="abrir-solicitud-del-pedido" data-id="${pedido.solicitud_mayorista_id}" type="button">Ver historial comercial</button></section>` : '';
     document.getElementById('contenido-detalle-pedido').innerHTML = `
       <div class="detalle-pedido-grid">
         <section><h3>Cliente</h3><p>${escaparHtml(pedido.nombre)}</p><p>${escaparHtml(pedido.correo)}</p><p>${escaparHtml(pedido.telefono)}</p><p>Cédula: ${escaparHtml(pedido.cedula || 'No registrada')}</p></section>
         <section><h3>Entrega</h3><p>${escaparHtml(direccionCompleta(pedido))}</p><p>Zona: ${escaparHtml(pedido.zona_entrega || 'No registrada')}</p><p>Repartidor: ${escaparHtml(pedido.repartidor_nombre || 'No registrado')}</p><p>GPS: ${escaparHtml(gps)}</p></section>
         <section><h3>Pago</h3><p>Forma: ${escaparHtml(pedido.forma_pago || 'No registrada')}</p><p>Envío: ${pedido.costo_envio == null ? 'No registrado' : `$${Number(pedido.costo_envio).toFixed(2)}`}</p><p>${pago}</p></section>
         <section><h3>Pedido #${pedido.id}</h3><p>Fecha: ${escaparHtml(pedido.fecha)}</p><p>Estado: ${escaparHtml(nombresEstado[pedido.estado] || 'En tu Puerta (anterior)')}</p><p>Total: $${Number(pedido.total).toFixed(2)}</p></section>
-      </div><div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody>${productos}</tbody></table></div>
+      </div>${condicionesMayoristas}<div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead><tbody>${productos}</tbody></table></div>
       <h3>Historial de estados</h3><ol class="historial-admin">${historial}</ol>`;
     document.getElementById('modal-pedido-id').value = pedido.id;
     const destinos = siguientesEstados(pedido.estado);
@@ -113,6 +114,13 @@ async function abrirPedido(id) {
     document.querySelector('#formulario-estado-pedido button[type="submit"]').disabled = !destinos.length;
     document.getElementById('observacion-estado-pedido').value = '';
     document.getElementById('observacion-visible').checked = false;
+    const historialComercial = document.getElementById('abrir-solicitud-del-pedido');
+    if (historialComercial) historialComercial.addEventListener('click', () => {
+      const solicitudId = historialComercial.dataset.id;
+      document.getElementById('modal-pedido').close();
+      mostrarModulo('mayoristas');
+      abrirSolicitudMayorista(solicitudId);
+    });
     const confirmar = document.getElementById('confirmar-pago-detalle');
     if (confirmar) confirmar.addEventListener('click', async () => {
       try {
@@ -345,6 +353,7 @@ function editarProducto(producto) {
   document.getElementById('producto-oferta').value = producto.precio_oferta || '';
   document.getElementById('producto-stock').value = producto.stock;
   document.getElementById('producto-mascota').value = producto.tipo_mascota;
+  document.getElementById('producto-textura').value = producto.textura || 'sin_clasificar';
   document.getElementById('producto-nutricion').value = producto.info_nutricional || '';
   document.getElementById('producto-presentaciones').value = producto.presentaciones || '';
   document.getElementById('producto-imagen').value = producto.imagen || '';
@@ -364,6 +373,7 @@ async function guardarProducto(evento) {
     precio_oferta: document.getElementById('producto-oferta').value || null,
     stock: document.getElementById('producto-stock').value,
     tipo_mascota: document.getElementById('producto-mascota').value,
+    textura: document.getElementById('producto-textura').value,
     info_nutricional: document.getElementById('producto-nutricion').value.trim(),
     presentaciones: document.getElementById('producto-presentaciones').value.trim(),
     estado: document.getElementById('producto-estado').value
@@ -391,13 +401,283 @@ async function retirarProducto(id) {
   } catch (error) { mostrarMensaje(error.message, true); }
 }
 
+const estadosMayoristas = {
+  nueva: 'Nueva', en_revision: 'En revisión', cotizacion_preparada: 'Cotización preparada',
+  cotizacion_enviada: 'Cotización enviada', aceptada: 'Aceptada', rechazada: 'Rechazada',
+  vencida: 'Vencida', convertida_en_pedido: 'Convertida en pedido'
+};
+function fechaLocalAdmin() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guayaquil' }).format(new Date());
+}
+let productosMayoristasAdmin = [];
+let solicitudMayoristaActual = null;
+
+function parametrosMayoristas() {
+  const params = new URLSearchParams();
+  const filtros = {
+    buscar: document.getElementById('buscar-mayorista').value.trim(),
+    estado: document.getElementById('estado-mayorista').value,
+    desde: document.getElementById('mayorista-desde').value,
+    hasta: document.getElementById('mayorista-hasta').value
+  };
+  Object.entries(filtros).forEach(([clave, valor]) => { if (valor) params.set(clave, valor); });
+  return params;
+}
+
+async function cargarMayoristas() {
+  const [solicitudes, productos] = await Promise.all([
+    pedir(`/api/mayoristas/admin/solicitudes?${parametrosMayoristas()}`),
+    pedir('/api/mayoristas/admin/productos')
+  ]);
+  productosMayoristasAdmin = productos;
+  document.getElementById('tabla-mayoristas').innerHTML = solicitudes.length ? solicitudes.map((solicitud) => `
+    <tr><td>#${solicitud.id}</td><td>${escapar(solicitud.fecha)}</td>
+    <td>${escapar(solicitud.contacto)}<br><strong>${escapar(solicitud.negocio)}</strong></td>
+    <td>${escapar(solicitud.ciudad)}, ${escapar(solicitud.provincia)}</td><td>${escapar(solicitud.productos || '')}</td>
+    <td>${escapar(estadosMayoristas[solicitud.estado] || solicitud.estado)}</td>
+    <td><button class="abrir-mayorista" data-id="${solicitud.id}" type="button">Revisar</button></td></tr>`).join('')
+    : '<tr><td colspan="7">No hay solicitudes para estos filtros.</td></tr>';
+  document.querySelectorAll('.abrir-mayorista').forEach((boton) => boton.addEventListener('click', () => abrirSolicitudMayorista(boton.dataset.id)));
+  await cargarProduccionPatitas();
+}
+
+function opcionesProductoMayorista(seleccionado) {
+  return productosMayoristasAdmin.map((producto) => `<option value="${producto.id}" ${Number(producto.id) === Number(seleccionado) ? 'selected' : ''}>${escapar(producto.nombre)} · ${producto.gestiona_produccion ? 'por patita' : escapar(producto.presentaciones || 'por presentación')}</option>`).join('');
+}
+
+function crearFilaCotizacionMayorista(producto = {}) {
+  return `<div class="fila-cotizacion-mayorista">
+    <label>Producto<select class="producto-cotizar" required>${opcionesProductoMayorista(producto.producto_id)}</select></label>
+    <label>Cantidad<input class="cantidad-cotizar" type="number" min="1" max="1000000" step="1" value="${Number(producto.cantidad || 1)}" required></label>
+    <label>Precio unitario ($)<input class="precio-cotizar" type="number" min="0" max="9999999" step="0.001" value="${producto.precio_unitario == null ? '' : Number(producto.precio_unitario).toFixed(3)}" placeholder="Definir manualmente"><small class="subtotal-linea-cotizar">Subtotal: $0.00</small></label>
+    <button class="quitar-fila-cotizacion" type="button">Quitar</button></div>`;
+}
+
+function convertirMilenimos(texto) {
+  const valor = String(texto || '').trim().replace(',', '.');
+  if (!valor) return 0n;
+  if (!/^\d{1,7}(\.\d{1,3})?$/.test(valor)) return null;
+  const [entero, decimales = ''] = valor.split('.');
+  return BigInt(entero) * 1000n + BigInt((decimales + '000').slice(0, 3));
+}
+
+function convertirCentavos(texto) {
+  const valor = String(texto || '0').trim().replace(',', '.');
+  if (!/^\d{1,10}(\.\d{1,2})?$/.test(valor)) return null;
+  const [entero, decimales = ''] = valor.split('.');
+  return BigInt(entero) * 100n + BigInt((decimales + '00').slice(0, 2));
+}
+
+function mostrarCentavos(centavos) {
+  return `$${centavos / 100n}.${String(centavos % 100n).padStart(2, '0')}`;
+}
+
+function actualizarTotalesCotizacion() {
+  const formulario = document.getElementById('form-mayorista-cotizacion');
+  const salida = document.getElementById('preview-mayorista');
+  if (!formulario || !salida) return;
+  let subtotal = 0n;
+  let valido = true;
+  formulario.querySelectorAll('.fila-cotizacion-mayorista').forEach((fila) => {
+    const cantidad = Number(fila.querySelector('.cantidad-cotizar').value);
+    const precio = convertirMilenimos(fila.querySelector('.precio-cotizar').value);
+    if (!Number.isSafeInteger(cantidad) || cantidad < 1 || precio === null) { valido = false; return; }
+    const linea = (precio * BigInt(cantidad) + 5n) / 10n;
+    subtotal += linea;
+    fila.querySelector('.subtotal-linea-cotizar').textContent = `Subtotal: ${mostrarCentavos(linea)}`;
+  });
+  const descuento = convertirCentavos(formulario.elements.descuento.value);
+  const envio = convertirCentavos(formulario.elements.envio.value);
+  if (descuento === null || envio === null || descuento > subtotal) valido = false;
+  if (!valido) { salida.textContent = 'Revisa cantidades, precios, descuento y envío.'; return; }
+  salida.innerHTML = `<span>Subtotal: <strong>${mostrarCentavos(subtotal)}</strong></span>
+    <span>Descuento: <strong>${mostrarCentavos(descuento)}</strong></span>
+    <span>Envío: <strong>${mostrarCentavos(envio)}</strong></span>
+    <span>Total: <strong>${mostrarCentavos(subtotal - descuento + envio)}</strong></span>`;
+}
+
+function renderEditorCotizacion(solicitud, cotizacion = null) {
+  const contenedorDetalle = document.getElementById('detalle-mayorista');
+  contenedorDetalle.querySelector('.editor-cotizacion-mayorista')?.remove();
+  const iniciales = cotizacion && cotizacion.productos && cotizacion.productos.length ? cotizacion.productos : solicitud.productos;
+  const lineas = iniciales.map((linea) => ({
+    producto_id: linea.producto_id, cantidad: linea.cantidad,
+    precio_unitario: cotizacion ? linea.precio_unitario : ''
+  }));
+  contenedorDetalle.innerHTML += `
+    <section class="editor-cotizacion-mayorista"><h3>${cotizacion ? 'Nueva versión de cotización' : 'Preparar cotización'}</h3>
+      <form id="form-mayorista-cotizacion" class="formulario-modulo">
+        <div id="lineas-cotizacion-mayorista">${lineas.map(crearFilaCotizacionMayorista).join('')}</div>
+        <button id="agregar-linea-cotizacion" type="button" class="boton boton-borde">Agregar producto</button>
+        <div id="preview-mayorista" class="totales-preview-mayorista" aria-live="polite"></div>
+        <div class="campos-mayorista-dos">
+          <label>Descuento manual ($)<input name="descuento" type="number" min="0" max="9999999999" step="0.01" value="${cotizacion ? Number(cotizacion.descuento) : 0}"></label>
+          <label>Envío ($)<input name="envio" type="number" min="0" max="9999999999" step="0.01" value="${cotizacion ? Number(cotizacion.envio) : 0}"></label>
+          <label>Vigencia<input name="vigencia" type="date" value="${cotizacion && cotizacion.vigencia ? String(cotizacion.vigencia).slice(0, 10) : ''}"></label>
+          <label>Condiciones de pago<input name="condiciones_pago" maxlength="500" value="${cotizacion ? escapar(cotizacion.condiciones_pago || '') : ''}"></label>
+        </div>
+        <label>Observaciones internas (solo administración)<textarea name="observaciones_internas" maxlength="4000">${cotizacion ? escapar(cotizacion.observaciones_internas || '') : ''}</textarea></label>
+        <button type="submit">Guardar cotización</button>
+      </form>
+      ${cotizacion && ['aceptada'].includes(cotizacion.estado) ? `<form class="convertir-cotizacion-mayorista formulario-modulo" data-id="${cotizacion.id}"><h4>Convertir cotización aceptada en pedido</h4><label>Fecha prevista de entrega<input name="fecha_entrega" type="date" min="${fechaLocalAdmin()}" required></label><button type="submit">Revisar y crear pedido</button></form>` : ''}
+    </section>`;
+  const detalle = document.getElementById('detalle-mayorista');
+  document.getElementById('lineas-cotizacion-mayorista').addEventListener('click', (evento) => {
+    if (evento.target.matches('.quitar-fila-cotizacion')) {
+      evento.target.closest('.fila-cotizacion-mayorista').remove();
+      actualizarTotalesCotizacion();
+    }
+  });
+  document.getElementById('agregar-linea-cotizacion').addEventListener('click', () => {
+    document.getElementById('lineas-cotizacion-mayorista').insertAdjacentHTML('beforeend', crearFilaCotizacionMayorista({ producto_id: productosMayoristasAdmin[0]?.id }));
+    actualizarTotalesCotizacion();
+  });
+  document.getElementById('form-mayorista-cotizacion').addEventListener('submit', guardarCotizacionMayorista);
+  document.getElementById('form-mayorista-cotizacion').addEventListener('input', actualizarTotalesCotizacion);
+  actualizarTotalesCotizacion();
+  detalle.querySelectorAll('.convertir-cotizacion-mayorista').forEach((formulario) => formulario.addEventListener('submit', convertirCotizacionMayorista));
+}
+
+async function abrirSolicitudMayorista(id) {
+  try {
+    const datos = await pedir(`/api/mayoristas/admin/solicitudes/${id}`);
+    solicitudMayoristaActual = datos.solicitud;
+    const cotizaciones = datos.cotizaciones.map((cotizacion) => `<article class="cotizacion-historica">
+      <h4>Cotización #${cotizacion.id} · ${escapar(cotizacion.estado)}</h4>
+      <p>${escapar(cotizacion.fecha)} · Subtotal $${Number(cotizacion.subtotal).toFixed(2)} · Descuento $${Number(cotizacion.descuento).toFixed(2)} · Envío $${Number(cotizacion.envio).toFixed(2)} · Total $${Number(cotizacion.total).toFixed(2)}</p>
+      ${cotizacion.productos.map((linea) => `<p>${escapar(linea.nombre_producto)} · ${Number(linea.cantidad)} ${escapar(linea.unidad)} × $${Number(linea.precio_unitario).toFixed(3)}</p>`).join('')}
+      ${['preparada', 'enviada'].includes(cotizacion.estado) ? `<button class="enviar-cotizacion-mayorista" data-id="${cotizacion.id}" type="button">Preparar enlace privado y WhatsApp</button>` : ''}
+      ${cotizacion.estado === 'aceptada' ? `<button class="editar-cotizacion-aceptada" data-id="${cotizacion.id}" type="button">Revisar y convertir</button>` : ''}
+    </article>`).join('') || '<p>Aún no hay cotizaciones.</p>';
+    const historial = datos.historial.map((item) => `<li>${escapar(item.fecha)} · ${escapar(item.evento)}${item.detalle ? ` · ${escapar(item.detalle)}` : ''}${item.administrador ? ` · ${escapar(item.administrador)}` : ''}</li>`).join('') || '<li>Sin movimientos anteriores.</li>';
+    const historico = datos.historico_cliente.map((item) => `<li>Solicitud #${item.id} · ${escapar(item.fecha)} · ${escapar(estadosMayoristas[item.estado] || item.estado)} · ${escapar(item.productos || '')}${item.cotizacion_id ? ` · Cotización #${item.cotizacion_id} ${escapar(item.estado_cotizacion)} · $${Number(item.total || 0).toFixed(2)}` : ''}</li>`).join('');
+    const detalle = document.getElementById('detalle-mayorista');
+    detalle.innerHTML = `<div class="detalle-mayorista-cabecera"><div><p class="sobrelinea">Solicitud #${datos.solicitud.id} · ${escapar(estadosMayoristas[datos.solicitud.estado])}</p><h3>${escapar(datos.solicitud.negocio)}</h3></div><button id="cerrar-detalle-mayorista" class="boton boton-borde" type="button">Cerrar detalle</button></div>
+      <div class="datos-cliente-mayorista"><p><strong>Contacto:</strong> ${escapar(datos.solicitud.contacto)}</p><p><strong>Teléfono:</strong> ${escapar(datos.solicitud.telefono)}</p><p><strong>WhatsApp:</strong> ${escapar(datos.solicitud.whatsapp)}</p><p><strong>Correo:</strong> ${escapar(datos.solicitud.correo)}</p><p><strong>Ubicación:</strong> ${escapar(datos.solicitud.sector_direccion || '')} · ${escapar(datos.solicitud.ciudad)}, ${escapar(datos.solicitud.provincia)}</p><p><strong>Tipo de negocio:</strong> ${escapar(datos.solicitud.tipo_negocio)}${datos.solicitud.otro_tipo_negocio ? ` · ${escapar(datos.solicitud.otro_tipo_negocio)}` : ''}</p><p><strong>Observaciones:</strong> ${escapar(datos.solicitud.observaciones || 'Ninguna')}</p></div>
+      <div class="acciones-detalle-mayorista"><label>Estado de solicitud<select id="nuevo-estado-mayorista"><option value="nueva">Nueva</option><option value="en_revision">En revisión</option><option value="rechazada">Rechazada</option></select></label><button id="guardar-estado-mayorista" type="button">Guardar estado</button></div>
+      <h3>Historial del cliente</h3><ul>${historico || '<li>Sin historial.</li>'}</ul><h3>Versiones de cotización</h3><div id="cotizaciones-mayorista">${cotizaciones}</div>
+      <div id="acciones-compartir-cotizacion"></div><button id="nueva-cotizacion-mayorista" type="button">Crear cotización</button><h3>Actividad</h3><ol>${historial}</ol>`;
+    detalle.hidden = false;
+    detalle.querySelector('#nuevo-estado-mayorista').value = datos.solicitud.estado;
+    detalle.querySelector('#cerrar-detalle-mayorista').addEventListener('click', () => { detalle.hidden = true; });
+    detalle.querySelector('#guardar-estado-mayorista').addEventListener('click', guardarEstadoMayorista);
+    detalle.querySelector('#nueva-cotizacion-mayorista').addEventListener('click', () => renderEditorCotizacion(datos.solicitud));
+    detalle.querySelectorAll('.enviar-cotizacion-mayorista').forEach((boton) => boton.addEventListener('click', () => compartirCotizacionMayorista(boton.dataset.id)));
+    detalle.querySelectorAll('.editar-cotizacion-aceptada').forEach((boton) => boton.addEventListener('click', () => {
+      const cotizacion = datos.cotizaciones.find((item) => String(item.id) === boton.dataset.id);
+      renderEditorCotizacion(datos.solicitud, cotizacion);
+      document.getElementById('form-mayorista-cotizacion').hidden = true;
+      document.querySelector('.convertir-cotizacion-mayorista')?.scrollIntoView({ behavior: 'smooth' });
+    }));
+    detalle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function guardarEstadoMayorista() {
+  try {
+    await pedir(`/api/mayoristas/admin/solicitudes/${solicitudMayoristaActual.id}/estado`, {
+      method: 'PUT', body: JSON.stringify({ estado: document.getElementById('nuevo-estado-mayorista').value })
+    });
+    mostrarMensaje('Estado de solicitud actualizado.');
+    await cargarMayoristas(); await abrirSolicitudMayorista(solicitudMayoristaActual.id);
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function guardarCotizacionMayorista(evento) {
+  evento.preventDefault();
+  const formulario = evento.currentTarget;
+  const lineas = [...formulario.querySelectorAll('.fila-cotizacion-mayorista')].map((fila) => ({
+    producto_id: fila.querySelector('.producto-cotizar').value,
+    cantidad: fila.querySelector('.cantidad-cotizar').value,
+    precio_unitario: fila.querySelector('.precio-cotizar').value
+  }));
+  try {
+    const datos = Object.fromEntries(new FormData(formulario).entries());
+    datos.productos = lineas;
+    const resultado = await pedir(`/api/mayoristas/admin/solicitudes/${solicitudMayoristaActual.id}/cotizaciones`, {
+      method: 'POST', body: JSON.stringify(datos)
+    });
+    mostrarMensaje(`Cotización ${resultado.estado === 'borrador' ? 'guardada como borrador' : 'preparada'} · Subtotal $${Number(resultado.subtotal).toFixed(2)} · Total $${Number(resultado.total).toFixed(2)}.`);
+    await cargarMayoristas(); await abrirSolicitudMayorista(solicitudMayoristaActual.id);
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function compartirCotizacionMayorista(id) {
+  try {
+    const datos = await pedir(`/api/mayoristas/admin/cotizaciones/${id}/enviar`, { method: 'POST' });
+    const enlace = `${location.origin}/cotizacion-mayorista.html?token=${encodeURIComponent(datos.token)}`;
+    const numero = String(datos.whatsapp || '').replace(/\D/g, '');
+    const mensaje = `Hola ${datos.negocio}, tu cotización privada de CHARQUI está lista: ${enlace}`;
+    const whatsapp = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
+    document.getElementById('acciones-compartir-cotizacion').innerHTML = `<p>Enlace privado (compártelo solo con este cliente):</p><input readonly value="${escapar(enlace)}" aria-label="Enlace privado de cotización"><div class="botones"><button id="copiar-enlace-cotizacion" type="button">Copiar enlace</button><a class="boton boton-borde" href="${escapar(whatsapp)}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a class="boton boton-borde" href="${escapar(enlace)}" target="_blank" rel="noopener noreferrer">Vista imprimible</a></div>`;
+    document.getElementById('copiar-enlace-cotizacion').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(enlace); mostrarMensaje('Enlace privado copiado.'); }
+      catch (error) { mostrarMensaje('Selecciona y copia el enlace privado.', true); }
+    });
+    await cargarMayoristas();
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function convertirCotizacionMayorista(evento) {
+  evento.preventDefault();
+  const formulario = evento.currentTarget;
+  try {
+    const resultado = await pedir(`/api/mayoristas/admin/cotizaciones/${formulario.dataset.id}/convertir`, {
+      method: 'POST', body: JSON.stringify({ fecha_entrega: formulario.elements.fecha_entrega.value })
+    });
+    mostrarMensaje(`Pedido #${resultado.pedido_id} creado. ${resultado.mensaje}`);
+    await cargarMayoristas(); await abrirSolicitudMayorista(solicitudMayoristaActual.id);
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function cargarProduccionPatitas() {
+  const desde = document.getElementById('produccion-desde').value || fechaLocalAdmin();
+  const hasta = document.getElementById('produccion-hasta').value || desde;
+  try {
+    const datos = await pedir(`/api/mayoristas/admin/produccion?desde=${desde}&hasta=${hasta}`);
+    document.getElementById('tabla-capacidad-patitas').innerHTML = datos.dias.map((dia) => `
+      <tr><td>${escapar(dia.fecha_entrega)}</td><td>${Number(dia.capacidad_unidades).toLocaleString('es-EC')}</td><td>${Number(dia.comprometidas).toLocaleString('es-EC')}</td><td>${(Number(dia.capacidad_unidades) - Number(dia.comprometidas)).toLocaleString('es-EC')}</td></tr>`).join('') || '<tr><td colspan="4">Aún no hay capacidad registrada en estas fechas.</td></tr>';
+    document.getElementById('tabla-produccion-patitas').innerHTML = datos.compromisos.map((item) => `
+      <tr><td>Pedido #${item.pedido_id}<br>${escapar(item.negocio)} · ${escapar(item.contacto)}</td><td>${escapar(item.fecha_entrega)}</td><td>${item.unidades_pedidas}</td>
+      <td><input type="number" min="${item.unidades_producidas}" max="${item.unidades_pedidas}" value="${item.unidades_producidas}" data-producidas="${item.detalle_pedido_id}" aria-label="Patitas producidas"></td>
+      <td><input type="number" min="${item.unidades_listas}" max="${item.unidades_pedidas}" value="${item.unidades_listas}" data-listas="${item.detalle_pedido_id}" aria-label="Patitas listas"></td>
+      <td><input type="number" min="${item.unidades_entregadas}" max="${item.unidades_pedidas}" value="${item.unidades_entregadas}" data-entregadas="${item.detalle_pedido_id}" aria-label="Patitas entregadas"></td>
+      <td><button class="guardar-progreso-patitas" data-id="${item.detalle_pedido_id}" type="button">Guardar avance</button></td></tr>`).join('') || '<tr><td colspan="7">No hay compromisos de producción en estas fechas.</td></tr>';
+    document.querySelectorAll('.guardar-progreso-patitas').forEach((boton) => boton.addEventListener('click', async () => {
+      const id = boton.dataset.id;
+      try {
+        await pedir(`/api/mayoristas/admin/produccion/${id}`, { method: 'PUT', body: JSON.stringify({
+          unidades_producidas: document.querySelector(`[data-producidas="${id}"]`).value,
+          unidades_listas: document.querySelector(`[data-listas="${id}"]`).value,
+          unidades_entregadas: document.querySelector(`[data-entregadas="${id}"]`).value
+        }) });
+        mostrarMensaje('Progreso de producción actualizado.'); await cargarProduccionPatitas();
+      } catch (error) { mostrarMensaje(error.message, true); }
+    }));
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
+async function guardarCapacidadPatitas(evento) {
+  evento.preventDefault();
+  try {
+    const resultado = await pedir('/api/mayoristas/admin/produccion/capacidad', { method: 'PUT', body: JSON.stringify({
+      fecha_entrega: document.getElementById('capacidad-fecha').value,
+      capacidad_unidades: document.getElementById('capacidad-unidades').value
+    }) });
+    mostrarMensaje(resultado.mensaje);
+    document.getElementById('produccion-desde').value = document.getElementById('capacidad-fecha').value;
+    document.getElementById('produccion-hasta').value = document.getElementById('capacidad-fecha').value;
+    await cargarProduccionPatitas();
+  } catch (error) { mostrarMensaje(error.message, true); }
+}
+
 function mostrarModulo(nombre) {
   document.querySelectorAll('.modulo-admin').forEach((modulo) => { modulo.hidden = modulo.id !== `modulo-${nombre}`; });
   document.querySelectorAll('.menu-admin [data-modulo]').forEach((boton) => boton.classList.toggle('activo', boton.dataset.modulo === nombre));
   const cargas = {
     dashboard: cargarDashboard, pedidos: cargarPedidos, entregas: cargarEntregas,
     inventario: cargarInventario, clientes: cargarClientes, reportes: cargarReporte,
-    envios: cargarConfiguracionEnvios, productos: cargarProductosAdmin
+    envios: cargarConfiguracionEnvios, productos: cargarProductosAdmin, mayoristas: cargarMayoristas
   };
   if (cargas[nombre]) cargas[nombre]().catch((error) => mostrarMensaje(error.message, true));
 }
@@ -416,6 +696,10 @@ async function cargarPanel() {
 }
 
 function iniciarEventos() {
+  document.getElementById('capacidad-fecha').min = fechaLocalAdmin();
+  document.getElementById('capacidad-fecha').value = fechaLocalAdmin();
+  document.getElementById('produccion-desde').value = fechaLocalAdmin();
+  document.getElementById('produccion-hasta').value = fechaLocalAdmin();
   estados.forEach(([estado, nombre]) => {
     const opcion = document.createElement('option');
     opcion.value = estado;
@@ -458,6 +742,13 @@ function iniciarEventos() {
   });
   document.getElementById('exportar-reporte').addEventListener('click', exportarReporte);
   document.getElementById('formulario-envios').addEventListener('submit', guardarConfiguracionEnvios);
+  document.getElementById('filtros-mayoristas').addEventListener('submit', (evento) => {
+    evento.preventDefault(); cargarMayoristas().catch((error) => mostrarMensaje(error.message, true));
+  });
+  document.getElementById('form-capacidad-patitas').addEventListener('submit', guardarCapacidadPatitas);
+  document.getElementById('filtro-produccion-patitas').addEventListener('submit', (evento) => {
+    evento.preventDefault(); cargarProduccionPatitas();
+  });
   document.getElementById('agregar-zona-envio').addEventListener('click', () => agregarZonaEnvio());
   document.getElementById('zonas-configurables').addEventListener('click', (evento) => {
     if (evento.target.matches('.quitar-zona')) evento.target.closest('.fila-zona').remove();

@@ -54,7 +54,8 @@ ALTER TABLE productos
   ADD COLUMN IF NOT EXISTS tipo_mascota ENUM('perro', 'gato', 'ambos') NOT NULL DEFAULT 'ambos',
   ADD COLUMN IF NOT EXISTS info_nutricional TEXT,
   ADD COLUMN IF NOT EXISTS presentaciones VARCHAR(255),
-  ADD COLUMN IF NOT EXISTS precio_oferta DECIMAL(10, 2) NULL;
+  ADD COLUMN IF NOT EXISTS precio_oferta DECIMAL(10, 2) NULL,
+  ADD COLUMN IF NOT EXISTS textura ENUM('crujiente', 'suave', 'sin_clasificar') NOT NULL DEFAULT 'sin_clasificar';
 
 ALTER TABLE pedidos
   ADD COLUMN IF NOT EXISTS zona_entrega VARCHAR(100) NULL,

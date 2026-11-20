@@ -28,8 +28,11 @@ async function cargarPedidos(consulta, parametros = []) {
   const marcas = ids.map(() => '?').join(', ');
   const [detalles] = await conexion.execute(
     `SELECT d.pedido_id, d.producto_id, d.cantidad, d.subtotal,
-       ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2) AS precio_unitario, p.nombre
+       COALESCE(dm.precio_unitario, ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2)) AS precio_unitario,
+       COALESCE(dm.nombre_producto, p.nombre) AS nombre,
+       CASE WHEN dm.detalle_pedido_id IS NULL THEN 0 ELSE 1 END AS precio_mayorista
      FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
+     LEFT JOIN detalle_pedido_mayorista dm ON dm.detalle_pedido_id = d.id
      WHERE d.pedido_id IN (${marcas}) ORDER BY d.id`, ids
   );
   return adjuntarDetalles(pedidos, detalles);
@@ -37,14 +40,23 @@ async function cargarPedidos(consulta, parametros = []) {
 
 async function cargarPedidoDetalle(id) {
   const [pedidos] = await conexion.execute(
-    `SELECT p.*, u.nombre, u.correo, u.telefono, u.cedula
-     FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id WHERE p.id = ?`, [id]
+    `SELECT p.*, u.nombre, u.correo, u.telefono, u.cedula,
+       pm.cotizacion_id AS cotizacion_mayorista_id, pm.fecha_entrega AS fecha_entrega_mayorista,
+       pm.condiciones_pago AS condiciones_mayoristas, pm.descuento AS descuento_mayorista,
+       pm.envio AS envio_mayorista, cm.solicitud_id AS solicitud_mayorista_id
+     FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
+     LEFT JOIN pedidos_mayoristas pm ON pm.pedido_id = p.id
+     LEFT JOIN cotizaciones_mayoristas cm ON cm.id = pm.cotizacion_id
+     WHERE p.id = ?`, [id]
   );
   if (!pedidos.length) return null;
   const [productos] = await conexion.execute(
     `SELECT d.producto_id, d.cantidad, d.subtotal,
-       ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2) AS precio_unitario, p.nombre
+       COALESCE(dm.precio_unitario, ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2)) AS precio_unitario,
+       COALESCE(dm.nombre_producto, p.nombre) AS nombre,
+       CASE WHEN dm.detalle_pedido_id IS NULL THEN 0 ELSE 1 END AS precio_mayorista
      FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
+     LEFT JOIN detalle_pedido_mayorista dm ON dm.detalle_pedido_id = d.id
      WHERE d.pedido_id = ? ORDER BY d.id`, [id]
   );
   const [historial] = await conexion.execute(
@@ -103,8 +115,10 @@ rutas.get('/pedidos', async (req, res) => {
   if (desde) { condiciones.push('p.fecha >= ?'); parametros.push(`${desde} 00:00:00`); }
   if (hasta) { condiciones.push('p.fecha < DATE_ADD(?, INTERVAL 1 DAY)'); parametros.push(hasta); }
   try {
-    const consulta = `SELECT p.*, u.nombre, u.correo, u.telefono, u.cedula
+    const consulta = `SELECT p.*, u.nombre, u.correo, u.telefono, u.cedula,
+      pm.cotizacion_id AS cotizacion_mayorista_id
       FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
+      LEFT JOIN pedidos_mayoristas pm ON pm.pedido_id = p.id
       ${condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : ''}
       ORDER BY p.fecha ${orden}, p.id ${orden}`;
     return res.json(await cargarPedidos(consulta, parametros));

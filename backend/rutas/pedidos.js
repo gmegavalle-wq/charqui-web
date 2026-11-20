@@ -36,8 +36,10 @@ function coordenadasValidas(latitud, longitud) {
 async function cargarDetalles(idPedido, base = conexion) {
   const [detalles] = await base.execute(
     `SELECT d.producto_id, d.cantidad, d.subtotal,
-       ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2) AS precio_unitario, p.nombre
+       COALESCE(dm.precio_unitario, ROUND(d.subtotal / NULLIF(d.cantidad, 0), 2)) AS precio_unitario,
+       COALESCE(dm.nombre_producto, p.nombre) AS nombre
      FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
+     LEFT JOIN detalle_pedido_mayorista dm ON dm.detalle_pedido_id = d.id
      WHERE d.pedido_id = ? ORDER BY d.id`, [idPedido]
   );
   return detalles;
@@ -289,10 +291,21 @@ rutas.put('/:id/estado', verificarAdministrador, async (req, res) => {
       return res.status(409).json({ error: 'El cambio no sigue el orden permitido. Avanza al siguiente estado o cancela el pedido.' });
     }
     if (cancelar) {
+      const [produccionIniciada] = await transaccion.execute(
+        `SELECT m.detalle_pedido_id FROM produccion_patitas_mayorista m
+         JOIN detalle_pedido d ON d.id = m.detalle_pedido_id
+         WHERE d.pedido_id = ? AND (m.unidades_producidas > 0 OR m.unidades_listas > 0 OR m.unidades_entregadas > 0)
+         LIMIT 1 FOR UPDATE`, [req.params.id]
+      );
+      if (produccionIniciada.length) {
+        await transaccion.rollback();
+        return res.status(409).json({ error: 'No se puede cancelar este pedido: la producción de patitas ya comenzó.' });
+      }
       const [detalles] = await transaccion.execute(
         `SELECT d.producto_id, d.cantidad, p.stock
          FROM detalle_pedido d JOIN productos p ON p.id = d.producto_id
-         WHERE d.pedido_id = ? FOR UPDATE`, [req.params.id]
+         LEFT JOIN produccion_patitas_mayorista pm ON pm.detalle_pedido_id = d.id
+         WHERE d.pedido_id = ? AND pm.detalle_pedido_id IS NULL FOR UPDATE`, [req.params.id]
       );
       for (const detalle of detalles) {
         const anterior = Number(detalle.stock);

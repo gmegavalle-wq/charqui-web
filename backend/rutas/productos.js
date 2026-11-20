@@ -102,6 +102,7 @@ function validarProducto(datos) {
     Number.isFinite(precioNumero) && precioNumero > 0 &&
     Number.isInteger(stockNumero) && stockNumero >= 0 &&
     ['perro', 'gato', 'ambos'].includes(tipo_mascota) &&
+    (!datos.textura || ['crujiente', 'suave', 'sin_clasificar'].includes(datos.textura)) &&
     (ofertaNumero === null || (Number.isFinite(ofertaNumero) && ofertaNumero > 0 && ofertaNumero < precioNumero)) &&
     (!datos.estado || ['disponible', 'agotado', 'inactivo'].includes(datos.estado))
   );
@@ -114,7 +115,7 @@ function valoresProducto(datos) {
   return [
     datos.nombre.trim(), datos.descripcion.trim(), Number(datos.precio),
     Number(datos.stock), datos.imagen || null, datos.estado || 'disponible',
-    datos.tipo_mascota, datos.info_nutricional || null,
+    datos.tipo_mascota, datos.textura || 'sin_clasificar', datos.info_nutricional || null,
     datos.presentaciones || null, oferta
   ];
 }
@@ -160,8 +161,8 @@ rutas.post('/', verificarAdministrador, async (req, res) => {
     const [resultado] = await conexion.execute(
       `INSERT INTO productos
        (nombre, descripcion, precio, stock, imagen, estado, tipo_mascota,
-        info_nutricional, presentaciones, precio_oferta)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        textura, info_nutricional, presentaciones, precio_oferta)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       valoresProducto(req.body)
     );
     res.status(201).json({ id: resultado.insertId, mensaje: 'Producto creado.' });
@@ -182,7 +183,7 @@ rutas.put('/:id', verificarAdministrador, async (req, res) => {
   try {
     const [resultado] = await conexion.execute(
       `UPDATE productos SET nombre = ?, descripcion = ?, precio = ?, stock = ?,
-       imagen = ?, estado = ?, tipo_mascota = ?, info_nutricional = ?,
+       imagen = ?, estado = ?, tipo_mascota = ?, textura = ?, info_nutricional = ?,
        presentaciones = ?, precio_oferta = ? WHERE id = ?`,
       [...valoresProducto(req.body), req.params.id]
     );

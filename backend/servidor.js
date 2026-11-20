@@ -18,6 +18,7 @@ servidor.use(express.static(carpetaFrontend));
 
 servidor.use('/api/auth', require('./rutas/autenticacion'));
 servidor.use('/api/productos', require('./rutas/productos'));
+servidor.use('/api/mayoristas', require('./rutas/mayoristas'));
 servidor.use('/api/ofertas', require('./rutas/ofertas'));
 servidor.use('/api/clientes', require('./rutas/clientes'));
 servidor.use('/api/administracion', require('./rutas/administracion'));

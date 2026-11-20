@@ -54,6 +54,7 @@
           <button type="button" data-modulo="reportes">Reportes</button>
           <button type="button" data-modulo="envios">Envíos y pagos</button>
           <button type="button" data-modulo="productos">Productos</button>
+          <button type="button" data-modulo="mayoristas">Mayoristas</button>
         </nav>
 
         <div class="contenido-admin">
@@ -136,10 +137,13 @@
               <input id="producto-id" type="hidden">
               <label for="producto-nombre">Nombre</label><input id="producto-nombre" required>
               <label for="producto-descripcion">Descripción</label><textarea id="producto-descripcion" required></textarea>
+              <small class="texto-secundario">Incluye una línea «Ingredientes: ...» para que el recomendador pueda ofrecer este filtro.</small>
               <label for="producto-precio">Precio</label><input id="producto-precio" type="number" min="0.01" step="0.01" required>
               <label for="producto-oferta">Precio de oferta (opcional)</label><input id="producto-oferta" type="number" min="0.01" step="0.01">
               <label for="producto-stock">Stock</label><input id="producto-stock" type="number" min="0" step="1" required>
               <label for="producto-mascota">Tipo de mascota</label><select id="producto-mascota"><option value="perro">Perro</option><option value="gato">Gato</option><option value="ambos">Ambos</option></select>
+              <label for="producto-textura">Textura verificada</label><select id="producto-textura"><option value="sin_clasificar">Sin clasificar</option><option value="crujiente">Crujiente</option><option value="suave">Suave</option></select>
+              <small class="texto-secundario">Clasifica solo cuando la textura esté confirmada; si no, déjala sin clasificar.</small>
               <label for="producto-nutricion">Información nutricional</label><textarea id="producto-nutricion"></textarea>
               <label for="producto-presentaciones">Presentaciones</label><input id="producto-presentaciones">
               <div class="campo-fotografia">
@@ -156,6 +160,32 @@
             </form>
             <p id="mensaje-producto-admin" aria-live="polite"></p>
             <div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th>Mascota</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-productos"></tbody></table></div>
+          </section>
+
+          <section id="modulo-mayoristas" class="modulo-admin" hidden>
+            <h2>Canal mayorista</h2>
+            <form id="filtros-mayoristas" class="filtros-admin">
+              <label for="buscar-mayorista">Cliente o negocio</label><input id="buscar-mayorista">
+              <label for="estado-mayorista">Estado</label><select id="estado-mayorista"><option value="">Todos</option><option value="nueva">Nueva</option><option value="en_revision">En revisión</option><option value="cotizacion_preparada">Cotización preparada</option><option value="cotizacion_enviada">Cotización enviada</option><option value="aceptada">Aceptada</option><option value="rechazada">Rechazada</option><option value="vencida">Vencida</option><option value="convertida_en_pedido">Convertida en pedido</option></select>
+              <label for="mayorista-desde">Desde</label><input id="mayorista-desde" type="date">
+              <label for="mayorista-hasta">Hasta</label><input id="mayorista-hasta" type="date">
+              <button type="submit">Filtrar solicitudes</button>
+            </form>
+            <div class="tabla-contenedor"><table><thead><tr><th>Solicitud</th><th>Fecha</th><th>Cliente y negocio</th><th>Ciudad</th><th>Productos y cantidades</th><th>Estado</th><th>Detalle</th></tr></thead><tbody id="tabla-mayoristas"></tbody></table></div>
+            <div id="detalle-mayorista" class="detalle-mayorista" hidden></div>
+
+            <section class="gestion-produccion-mayorista">
+              <h3>Producción y compromisos de patitas</h3>
+              <p>La capacidad se registra por fecha. Las piezas mayoristas no cambian el stock de paquetes minoristas.</p>
+              <form id="form-capacidad-patitas" class="formulario-modulo capacidad-patitas">
+                <label for="capacidad-fecha">Fecha de entrega</label><input id="capacidad-fecha" type="date" required>
+                <label for="capacidad-unidades">Capacidad de producción (patitas)</label><input id="capacidad-unidades" type="number" min="0" max="10000000" step="1" required>
+                <button type="submit">Guardar capacidad</button>
+              </form>
+              <div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Capacidad</th><th>Comprometidas</th><th>Disponibles</th></tr></thead><tbody id="tabla-capacidad-patitas"></tbody></table></div>
+              <form id="filtro-produccion-patitas" class="busqueda-admin"><label for="produccion-desde">Desde</label><input id="produccion-desde" type="date"><label for="produccion-hasta">Hasta</label><input id="produccion-hasta" type="date"><button type="submit">Consultar producción</button></form>
+              <div class="tabla-contenedor"><table><thead><tr><th>Pedido y cliente</th><th>Fecha de entrega</th><th>Pedidas</th><th>Producidas</th><th>Listas</th><th>Entregadas</th><th>Actualizar avance</th></tr></thead><tbody id="tabla-produccion-patitas"></tbody></table></div>
+            </section>
           </section>
         </div>
       </div>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Conoce el canal mayorista de CHARQUI y solicita una cotización personalizada para tu negocio.">
+  <title>Mayoristas | CHARQUI</title>
+  <link rel="icon" href="/img/logo.png" type="image/png">
+  <link rel="stylesheet" href="/css/estilos.css">
+  <script src="/js/visual.js" defer></script>
+  <script src="/js/mayoristas.js" defer></script>
+</head>
+<body class="pagina-mayoristas">
+  <header class="barra-superior">
+    <div class="barra-interior">
+      <a class="marca" href="/" aria-label="CHARQUI, inicio">
+        <img class="logo-imagen" src="/img/logo.png" alt="Logotipo CHARQUI">
+        <span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span>
+      </a>
+      <nav class="navegacion-desktop" aria-label="Navegación principal">
+        <a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a>
+        <a class="actual" aria-current="page" href="/mayoristas.html">Mayoristas</a>
+      </nav>
+      <div class="acciones-cabecera">
+        <a class="enlace-carrito" href="/carrito.html" aria-label="Carrito">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a>
+        <details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil">
+          <a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a class="actual" aria-current="page" href="/mayoristas.html">Mayoristas</a>
+        </nav></details>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="mayorista-hero">
+      <div class="mayorista-hero-texto">
+        <p class="sobrelinea">Canal comercial · Quito, Ecuador</p>
+        <h1>CRECE CON CHARQUI</h1>
+        <p>Snacks naturales para tiendas de mascotas, distribuidores, veterinarias y negocios que quieren ofrecer algo diferente.</p>
+        <div class="mayorista-acciones">
+          <a class="boton" href="#solicitar-cotizacion">Solicitar cotización</a>
+          <a class="boton boton-secundario" href="#catalogo-mayorista">Conocer productos</a>
+        </div>
+      </div>
+      <div class="mayorista-hero-foto"><img id="foto-hero-mayorista" src="/img/hero-mascota.jpg" alt="Mascota disfrutando de un snack CHARQUI"></div>
+      <span class="mayorista-sello" aria-hidden="true">Hecho con ingredientes naturales</span>
+    </section>
+
+    <section class="mayorista-beneficios" aria-label="Propuesta comercial">
+      <article><span class="beneficio-numero">01</span><h2>100 % natural</h2><p>Snacks deshidratados para consentir a las mascotas.</p></article>
+      <article><span class="beneficio-numero">02</span><h2>Para tu negocio</h2><p>Productos del catálogo CHARQUI para tiendas y distribuidores.</p></article>
+      <article><span class="beneficio-numero">03</span><h2>Atención directa</h2><p>Revisamos cada solicitud y conversamos contigo.</p></article>
+      <article><span class="beneficio-numero">04</span><h2>Propuesta a medida</h2><p>La cotización se prepara según tus productos y necesidades.</p></article>
+    </section>
+
+    <section id="catalogo-mayorista" class="seccion-mayorista catalogo-mayorista">
+      <div class="mayorista-encabezado"><p class="sobrelinea">Catálogo CHARQUI</p><h2>Productos para tu negocio</h2><p>Explora las opciones disponibles y agrega las que te interesa cotizar. Los precios se definen en cada propuesta.</p></div>
+      <p id="estado-catalogo-mayorista" class="mensaje-estado" role="status">Cargando productos...</p>
+      <div id="productos-mayoristas" class="rejilla-mayoristas"></div>
+    </section>
+
+    <section class="mayorista-pasos">
+      <div class="mayorista-encabezado"><p class="sobrelinea">Un proceso directo</p><h2>¿Cómo funciona?</h2></div>
+      <ol>
+        <li><span>1</span><h3>Selecciona</h3><p>Elige los productos y cantidades que deseas consultar.</p></li>
+        <li><span>2</span><h3>Envía tu solicitud</h3><p>Cuéntanos sobre tu negocio y cómo contactarte.</p></li>
+        <li><span>3</span><h3>Recibe tu cotización</h3><p>CHARQUI revisará tu solicitud y preparará una propuesta personalizada.</p></li>
+        <li><span>4</span><h3>Coordina tu pedido</h3><p>Conversamos las condiciones y confirmamos disponibilidad.</p></li>
+      </ol>
+    </section>
+
+    <section id="solicitar-cotizacion" class="seccion-mayorista formulario-mayorista-seccion">
+      <div class="mayorista-formulario-intro"><p class="sobrelinea">Hablemos de tu negocio</p><h2>Solicita una cotización</h2><p>Comparte tus datos y los productos que quieres cotizar. Esta solicitud no genera una compra ni descuenta inventario.</p><div id="lista-solicitud-mayorista" class="lista-solicitud-mayorista"><p>Aún no agregas productos.</p></div></div>
+      <form id="formulario-solicitud-mayorista" class="formulario-mayorista">
+        <div class="campos-mayorista-dos">
+          <label>Nombre del negocio<input name="negocio" maxlength="150" required></label>
+          <label>Nombre del contacto<input name="contacto" maxlength="120" required></label>
+          <label>Teléfono<input name="telefono" type="tel" maxlength="30" required></label>
+          <label>WhatsApp<input name="whatsapp" type="tel" maxlength="30" required></label>
+          <label>Correo electrónico<input name="correo" type="email" maxlength="150" required></label>
+          <label>Tipo de negocio<select name="tipo_negocio" required><option value="">Selecciona una opción</option><option>Tienda de mascotas</option><option>Distribuidor</option><option>Veterinaria</option><option>Emprendimiento</option><option>Otro</option></select></label>
+          <label>Provincia<input name="provincia" maxlength="100" required></label>
+          <label>Ciudad<input name="ciudad" maxlength="100" required></label>
+        </div>
+        <label>Sector o dirección (opcional)<input name="sector_direccion" maxlength="255"></label>
+        <label>Si elegiste «Otro», cuéntanos qué tipo de negocio<input name="otro_tipo_negocio" maxlength="100"></label>
+        <label>Observaciones<textarea name="observaciones" rows="4" maxlength="2000"></textarea></label>
+        <label class="consentimiento-mayorista"><input name="consentimiento" type="checkbox" required> Acepto el uso de mis datos para gestionar esta solicitud, según la <a href="/politica.html">política de privacidad</a>.</label>
+        <p id="error-solicitud-mayorista" class="error-campo" role="status"></p>
+        <button id="enviar-solicitud-mayorista" class="boton" type="submit">Enviar solicitud</button>
+        <p id="confirmacion-solicitud-mayorista" class="confirmacion-mayorista" role="status" hidden></p>
+      </form>
+    </section>
+
+    <section class="mayorista-cta"><p class="sobrelinea">Hablemos</p><h2>¿Buscas un proveedor de snacks deshidratados para tu negocio?</h2><a class="boton boton-secundario" href="#solicitar-cotizacion">Solicitar mi cotización</a></section>
+  </main>
+
+  <footer class="pie-pagina"><div class="pie-interior pie-interior-redes">
+    <a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.png" alt="Logotipo CHARQUI"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a>
+    <nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mayoristas.html">Mayoristas</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/politica.html">Política de privacidad</a></nav>
+    <div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>CHARQUI · Quito, Ecuador</p></div>
+  </div></footer>
+</body>
+</html>
