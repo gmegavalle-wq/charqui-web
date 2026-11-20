@@ -3342,3 +3342,228 @@ td button {
   .cotizacion-privada { width: 100%; margin: 0; }
   .documento-cotizacion { border: 0; box-shadow: none; }
 }
+
+/* Ajustes de lectura y desbordamiento del panel administrativo */
+.admin-pagina,
+.admin-pagina #panel-admin,
+.admin-pagina .administracion-layout,
+.admin-pagina .contenido-admin,
+.admin-pagina .modulo-admin,
+.admin-pagina .gestion-produccion-mayorista {
+  min-width: 0;
+}
+
+.admin-pagina .encabezado-admin { min-width: 0; }
+.admin-pagina .menu-admin button { flex: 0 0 auto; white-space: nowrap; }
+
+.admin-pagina .tabla-contenedor {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-pagina .tabla-contenedor table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.admin-pagina .tabla-contenedor th,
+.admin-pagina .tabla-contenedor td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.admin-pagina .tabla-contenedor th { white-space: normal; line-height: 1.35; }
+
+.admin-pagina .tabla-contenedor td button {
+  max-width: 100%;
+  min-height: 40px;
+  margin: 0.15rem 0.15rem 0.15rem 0;
+  white-space: normal;
+}
+
+.admin-pagina .tabla-contenedor td input,
+.admin-pagina .tabla-contenedor td select {
+  min-width: 4.5rem;
+  margin: 0.15rem 0;
+  padding: 0.55rem;
+}
+
+/* Anchos por tabla para mantener las columnas proporcionadas. */
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) { min-width: 800px; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(1) { width: 11%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(2) { width: 19%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(3) { width: 14%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(4) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(5) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(6) { width: 20%; }
+.admin-pagina table:has(> thead + tbody#tabla-pedidos) th:nth-child(7) { width: 12%; }
+
+.admin-pagina table:has(> thead + tbody#tabla-entregas),
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) { min-width: 1120px; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(1) { width: 8%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(2) { width: 15%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(3) { width: 23%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(4) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(5) { width: 10%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(6) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-entregas) th:nth-child(7) { width: 20%; }
+
+.admin-pagina table:has(> thead + tbody#tabla-inventario) { min-width: 760px; }
+.admin-pagina table:has(> thead + tbody#tabla-inventario) th:nth-child(1) { width: 27%; }
+.admin-pagina table:has(> thead + tbody#tabla-inventario) th:nth-child(2) { width: 13%; }
+.admin-pagina table:has(> thead + tbody#tabla-inventario) th:nth-child(3) { width: 16%; }
+.admin-pagina table:has(> thead + tbody#tabla-inventario) th:nth-child(4) { width: 27%; }
+.admin-pagina table:has(> thead + tbody#tabla-inventario) th:nth-child(5) { width: 17%; }
+
+.admin-pagina table:has(> thead + tbody#tabla-movimientos) { min-width: 1040px; }
+.admin-pagina table:has(> thead + tbody#tabla-clientes) { min-width: 1040px; }
+.admin-pagina table:has(> thead + tbody#tabla-productos) { min-width: 820px; }
+.admin-pagina table:has(> thead + tbody#tabla-reporte-productos) { min-width: 560px; }
+.admin-pagina table:has(> thead + tbody#tabla-capacidad-patitas) { min-width: 600px; }
+.admin-pagina table:has(> thead + tbody#tabla-produccion-patitas) { min-width: 1020px; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(1) { width: 10%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(2) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(3) { width: 20%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(4) { width: 12%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(5) { width: 21%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(6) { width: 15%; }
+.admin-pagina table:has(> thead + tbody#tabla-mayoristas) th:nth-child(7) { width: 10%; }
+
+.admin-pagina .filtros-admin {
+  grid-template-columns: minmax(7rem, 0.8fr) minmax(0, 1.4fr);
+  align-items: center;
+}
+
+.admin-pagina .filtros-admin > button { grid-column: 1 / -1; }
+
+.admin-pagina .busqueda-admin {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+}
+
+.admin-pagina .filtros-admin input,
+.admin-pagina .filtros-admin select,
+.admin-pagina .busqueda-admin input { min-width: 0; }
+
+.admin-pagina .busqueda-admin > button,
+.admin-pagina .busqueda-admin > a { grid-column: span 1; }
+
+.admin-pagina #contenido-detalle-pedido { max-width: 100%; overflow-x: auto; }
+.admin-pagina #contenido-detalle-pedido table { min-width: 560px; table-layout: fixed; }
+
+.admin-pagina .modal-admin {
+  box-sizing: border-box;
+  max-width: calc(100vw - 1rem);
+  max-height: min(90vh, 900px);
+  overflow-wrap: anywhere;
+}
+
+.admin-pagina .previsualizacion-fotografia { min-width: 0; overflow: hidden; }
+.admin-pagina .previsualizacion-fotografia img { max-width: 100%; object-fit: contain; }
+
+.admin-pagina :focus-visible { outline: 3px solid var(--tierra); outline-offset: 2px; }
+
+@media (min-width: 768px) {
+  .admin-pagina .encabezado-admin { grid-template-columns: minmax(0, 1fr) auto; }
+  .admin-pagina .filtros-admin { grid-template-columns: minmax(8rem, 0.75fr) minmax(0, 1.25fr); }
+}
+
+@media (max-width: 767px) {
+  .admin-pagina .encabezado-admin { grid-template-columns: minmax(0, 1fr); }
+  .admin-pagina .encabezado-admin > button { justify-self: start; }
+  .admin-pagina .filtros-admin,
+  .admin-pagina .busqueda-admin { grid-template-columns: minmax(0, 1fr); }
+  .admin-pagina .filtros-admin > button,
+  .admin-pagina .busqueda-admin > button,
+  .admin-pagina .busqueda-admin > a { grid-column: 1; }
+  .admin-pagina .modal-admin { padding: 0.85rem; }
+}
+
+/* Formulario de producto: campos agrupados y fotografía visible. */
+.admin-pagina #formulario-producto {
+  display: block;
+  margin: 1rem 0 1.5rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--linea);
+  border-radius: 18px;
+  background: var(--marfil);
+}
+
+.admin-pagina .campos-producto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.admin-pagina .campo-producto {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 0.3rem;
+  margin: 0;
+}
+
+.admin-pagina .campo-producto label,
+.admin-pagina .etiqueta-campo {
+  margin: 0;
+  color: var(--verde-profundo);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.admin-pagina .campo-fotografia > label.boton-fotografia {
+  border-color: var(--verde-profundo);
+  background: var(--verde-profundo);
+  color: var(--marfil);
+}
+
+.admin-pagina .campo-fotografia > label.boton-fotografia:hover {
+  border-color: var(--verde);
+  background: var(--verde);
+  color: var(--marfil);
+}
+
+.admin-pagina .campo-producto input,
+.admin-pagina .campo-producto select,
+.admin-pagina .campo-producto textarea {
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-pagina .campo-producto textarea { min-height: 112px; }
+.admin-pagina .campo-producto small { line-height: 1.5; }
+
+.admin-pagina .campo-fotografia {
+  padding: 1rem;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: var(--crema);
+}
+
+.admin-pagina .previsualizacion-fotografia {
+  width: 100%;
+  min-height: 270px;
+  margin-top: 0.4rem;
+  border-style: solid;
+  border-color: var(--linea);
+  background: var(--marfil);
+}
+
+.admin-pagina .previsualizacion-fotografia img {
+  width: min(100%, 520px);
+  height: 280px;
+  object-fit: contain;
+}
+
+.admin-pagina #formulario-producto > .botones {
+  justify-content: flex-start;
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .admin-pagina .campos-producto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-pagina .campo-producto-ancho { grid-column: 1 / -1; }
+}

@@ -293,7 +293,10 @@ function mostrarPrevisualizacion(ruta) {
     aviso.hidden = false;
     return;
   }
-  imagen.src = ruta.startsWith('/') ? ruta : `/img/${encodeURIComponent(ruta)}`;
+  const rutaImagen = ruta.startsWith('/') || /^(blob:|data:|https?:\/\/)/i.test(ruta)
+    ? ruta
+    : `/img/${encodeURIComponent(ruta)}`;
+  imagen.src = rutaImagen;
   imagen.hidden = false;
   aviso.hidden = true;
 }
