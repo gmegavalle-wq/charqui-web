@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+<rect width="1600" height="1000" fill="#f8faf9"/>
+<text x="800" y="55" text-anchor="middle" font-family="Calibri,Arial" font-size="34" font-weight="700" fill="#174c43">Modelo entidad-relación general — CHARQUI</text>
+<g font-family="Calibri,Arial" font-size="17">
+<g fill="#d9ebe6" stroke="#28715f" stroke-width="2">
+<rect x="40" y="100" rx="12" width="220" height="70"/><text x="150" y="130" text-anchor="middle" font-weight="700">usuarios</text><text x="150" y="152" text-anchor="middle">id PK · rol · correo</text>
+<rect x="300" y="100" rx="12" width="220" height="70"/><text x="410" y="130" text-anchor="middle" font-weight="700">productos</text><text x="410" y="152" text-anchor="middle">id PK · precio · stock</text>
+<rect x="560" y="100" rx="12" width="220" height="70"/><text x="670" y="130" text-anchor="middle" font-weight="700">pedidos</text><text x="670" y="152" text-anchor="middle">id PK · usuario_id FK</text>
+<rect x="820" y="100" rx="12" width="220" height="70"/><text x="930" y="130" text-anchor="middle" font-weight="700">detalle_pedido</text><text x="930" y="152" text-anchor="middle">pedido_id · producto_id</text>
+<rect x="1080" y="100" rx="12" width="220" height="70"/><text x="1190" y="130" text-anchor="middle" font-weight="700">historial_pedidos</text><text x="1190" y="152" text-anchor="middle">pedido_id · estado_nuevo</text>
+<rect x="1340" y="100" rx="12" width="220" height="70"/><text x="1450" y="130" text-anchor="middle" font-weight="700">movimientos_inventario</text><text x="1450" y="152" text-anchor="middle">producto · stock · pedido</text>
+
+<rect x="40" y="230" rx="12" width="220" height="70"/><text x="150" y="260" text-anchor="middle" font-weight="700">zonas_envio</text><text x="150" y="282" text-anchor="middle">id PK · nombre UK · tarifa</text>
+<rect x="300" y="230" rx="12" width="220" height="70"/><text x="410" y="260" text-anchor="middle" font-weight="700">formas_pago</text><text x="410" y="282" text-anchor="middle">id PK · nombre UK</text>
+<rect x="560" y="230" rx="12" width="220" height="70"/><text x="670" y="260" text-anchor="middle" font-weight="700">configuracion_tienda</text><text x="670" y="282" text-anchor="middle">clave PK · valor</text>
+<rect x="820" y="230" rx="12" width="220" height="70"/><text x="930" y="260" text-anchor="middle" font-weight="700">configuracion_producto_mayorista</text><text x="930" y="282" text-anchor="middle">producto_id PK/FK</text>
+<rect x="1080" y="230" rx="12" width="220" height="70"/><text x="1190" y="260" text-anchor="middle" font-weight="700">solicitudes_mayoristas</text><text x="1190" y="282" text-anchor="middle">id PK · clave UK · estado</text>
+<rect x="1340" y="230" rx="12" width="220" height="70"/><text x="1450" y="260" text-anchor="middle" font-weight="700">detalle_solicitud_mayorista</text><text x="1450" y="282" text-anchor="middle">solicitud · producto · cantidad</text>
+
+<rect x="40" y="360" rx="12" width="220" height="70"/><text x="150" y="390" text-anchor="middle" font-weight="700">cotizaciones_mayoristas</text><text x="150" y="412" text-anchor="middle">id PK · solicitud FK · token_hash UK</text>
+<rect x="300" y="360" rx="12" width="220" height="70"/><text x="410" y="390" text-anchor="middle" font-weight="700">detalle_cotizacion_mayorista</text><text x="410" y="412" text-anchor="middle">cotizacion · producto · precio</text>
+<rect x="560" y="360" rx="12" width="220" height="70"/><text x="670" y="390" text-anchor="middle" font-weight="700">historial_mayoristas</text><text x="670" y="412" text-anchor="middle">solicitud · cotizacion · evento</text>
+<rect x="820" y="360" rx="12" width="220" height="70"/><text x="930" y="390" text-anchor="middle" font-weight="700">pedidos_mayoristas</text><text x="930" y="412" text-anchor="middle">pedido_id 1:1 · cotizacion UK</text>
+<rect x="1080" y="360" rx="12" width="220" height="70"/><text x="1190" y="390" text-anchor="middle" font-weight="700">detalle_pedido_mayorista</text><text x="1190" y="412" text-anchor="middle">detalle_pedido_id PK/FK</text>
+<rect x="1340" y="360" rx="12" width="220" height="70"/><text x="1450" y="390" text-anchor="middle" font-weight="700">capacidad_produccion_patitas</text><text x="1450" y="412" text-anchor="middle">fecha_entrega PK · capacidad</text>
+
+<rect x="40" y="490" rx="12" width="220" height="70"/><text x="150" y="520" text-anchor="middle" font-weight="700">produccion_patitas_mayorista</text><text x="150" y="542" text-anchor="middle">detalle_pedido_id PK/FK</text>
+<rect x="300" y="490" rx="12" width="220" height="70"/><text x="410" y="520" text-anchor="middle" font-weight="700">idempotencia_pedidos</text><text x="410" y="542" text-anchor="middle">clave PK · pedido_id UK/FK</text>
+</g>
+<g fill="none" stroke="#28715f" stroke-width="2">
+<path d="M260 135H300"/><text x="280" y="125" text-anchor="middle" fill="#174c43" font-size="14">1:N</text>
+<path d="M520 135H560"/><text x="540" y="125" text-anchor="middle" fill="#174c43" font-size="14">1:N</text>
+<path d="M780 135H820"/><text x="800" y="125" text-anchor="middle" fill="#174c43" font-size="14">1:N</text>
+<path d="M1190 300V360"/><text x="1205" y="332" fill="#174c43" font-size="14">1:N</text>
+<path d="M150 300V490"/><text x="165" y="395" fill="#174c43" font-size="14">1:1</text>
+<path d="M260 395H300"/><text x="280" y="385" text-anchor="middle" fill="#174c43" font-size="14">N:M</text>
+<path d="M780 395H820"/><text x="800" y="385" text-anchor="middle" fill="#174c43" font-size="14">1:1</text>
+<path d="M520 525H300"/><text x="410" y="515" text-anchor="middle" fill="#174c43" font-size="14">pedido original</text>
+</g>
+<text x="800" y="650" text-anchor="middle" font-size="24" font-weight="700" fill="#174c43">Relaciones principales</text>
+<text x="800" y="695" text-anchor="middle" font-size="19" fill="#2a3331">usuarios 1:N pedidos · productos N:M pedidos mediante detalle_pedido</text>
+<text x="800" y="730" text-anchor="middle" font-size="19" fill="#2a3331">productos N:M solicitudes mediante detalle_solicitud_mayorista</text>
+<text x="800" y="765" text-anchor="middle" font-size="19" fill="#2a3331">productos N:M cotizaciones mediante detalle_cotizacion_mayorista</text>
+<text x="800" y="800" text-anchor="middle" font-size="19" fill="#2a3331">cotizaciones 1:1 pedidos_mayoristas · detalle_pedido 1:1 producción mayorista</text>
+<text x="800" y="845" text-anchor="middle" font-size="18" fill="#64756f">20 tablas · 159 campos · 20 PK · 23 referencias FK identificadas en charqui_web_test</text>
+</g>
+</svg>

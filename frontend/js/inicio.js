@@ -44,7 +44,7 @@ async function cargarOfertas() {
           <p class="precio-producto"><s>$${Number(producto.precio).toFixed(2)}</s> <strong>$${Number(producto.precio_oferta).toFixed(2)}</strong></p>
           <a class="boton boton-principal boton-ancho" href="/producto.html?id=${producto.id}">Ver producto</a></div>
         </article>`).join('')
-      : '<p class="sin-productos">Pronto encontrarás productos destacados en nuestro catálogo.</p>';
+      : '<p class="sin-productos">Pronto encontrarás ofertas en nuestro catálogo.</p>';
     contenedor.querySelectorAll('.producto-imagen').forEach(prepararImagenAlternativa);
   } catch (error) {
     mensaje.textContent = 'No se pudieron cargar las ofertas.';

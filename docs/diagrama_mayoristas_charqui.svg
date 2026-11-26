@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720">
+<rect width="1500" height="720" fill="#f8faf9"/>
+<text x="750" y="50" text-anchor="middle" font-family="Calibri,Arial" font-size="32" font-weight="700" fill="#174c43">Modelo mayorista y producción de patitas</text>
+<g font-family="Calibri,Arial" font-size="18">
+<g fill="#d9ebe6" stroke="#28715f" stroke-width="2">
+<rect x="70" y="110" rx="12" width="270" height="100"/><text x="205" y="145" text-anchor="middle" font-weight="700">solicitudes_mayoristas</text><text x="205" y="175" text-anchor="middle">id PK · clave_solicitud UK</text><text x="205" y="197" text-anchor="middle">negocio · estado · usuario_id</text>
+<rect x="460" y="110" rx="12" width="270" height="100"/><text x="595" y="145" text-anchor="middle" font-weight="700">detalle_solicitud_mayorista</text><text x="595" y="175" text-anchor="middle">solicitud_id FK</text><text x="595" y="197" text-anchor="middle">producto_id FK · cantidad</text>
+<rect x="850" y="110" rx="12" width="270" height="100"/><text x="985" y="145" text-anchor="middle" font-weight="700">cotizaciones_mayoristas</text><text x="985" y="175" text-anchor="middle">id PK · solicitud_id FK</text><text x="985" y="197" text-anchor="middle">estado · token_hash UK</text>
+<rect x="1240" y="110" rx="12" width="190" height="100"/><text x="1335" y="145" text-anchor="middle" font-weight="700">detalle_cotizacion</text><text x="1335" y="175" text-anchor="middle">cotizacion_id FK</text><text x="1335" y="197" text-anchor="middle">precio · cantidad</text>
+
+<rect x="70" y="330" rx="12" width="270" height="100"/><text x="205" y="365" text-anchor="middle" font-weight="700">historial_mayoristas</text><text x="205" y="395" text-anchor="middle">solicitud_id · cotizacion_id FK</text><text x="205" y="417" text-anchor="middle">administrador_id · evento</text>
+<rect x="460" y="330" rx="12" width="270" height="100"/><text x="595" y="365" text-anchor="middle" font-weight="700">pedidos_mayoristas</text><text x="595" y="395" text-anchor="middle">pedido_id PK/FK</text><text x="595" y="417" text-anchor="middle">cotizacion_id UK/FK</text>
+<rect x="850" y="330" rx="12" width="270" height="100"/><text x="985" y="365" text-anchor="middle" font-weight="700">detalle_pedido_mayorista</text><text x="985" y="395" text-anchor="middle">detalle_pedido_id PK/FK</text><text x="985" y="417" text-anchor="middle">precio histórico</text>
+<rect x="1240" y="330" rx="12" width="190" height="100"/><text x="1335" y="365" text-anchor="middle" font-weight="700">produccion_patitas</text><text x="1335" y="395" text-anchor="middle">detalle_pedido_id PK/FK</text><text x="1335" y="417" text-anchor="middle">progreso por unidad</text>
+
+<rect x="460" y="540" rx="12" width="270" height="100"/><text x="595" y="575" text-anchor="middle" font-weight="700">pedidos</text><text x="595" y="605" text-anchor="middle">id PK · usuario_id FK</text><text x="595" y="627" text-anchor="middle">total · estado</text>
+<rect x="850" y="540" rx="12" width="270" height="100"/><text x="985" y="575" text-anchor="middle" font-weight="700">detalle_pedido</text><text x="985" y="605" text-anchor="middle">pedido_id · producto_id FK</text><text x="985" y="627" text-anchor="middle">cantidad · subtotal</text>
+<rect x="1240" y="540" rx="12" width="190" height="100"/><text x="1335" y="575" text-anchor="middle" font-weight="700">capacidad_patitas</text><text x="1335" y="605" text-anchor="middle">fecha_entrega PK</text><text x="1335" y="627" text-anchor="middle">capacidad_unidades</text>
+</g>
+<g fill="none" stroke="#28715f" stroke-width="3">
+<path d="M340 160H460"/><text x="400" y="145" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M730 160H850"/><text x="790" y="145" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M1120 160H1240"/><text x="1180" y="145" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M985 210V330"/><text x="1005" y="270" fill="#174c43">1:1 pedido</text>
+<path d="M595 430V540"/><text x="615" y="485" fill="#174c43">1:1</text>
+<path d="M985 430V540"/><text x="1005" y="485" fill="#174c43">1:1</text>
+<path d="M1120 590H1240"/><text x="1180" y="575" text-anchor="middle" fill="#174c43">fecha</text>
+</g>
+</g>
+</svg>

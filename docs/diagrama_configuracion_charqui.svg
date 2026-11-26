@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+<rect width="1200" height="560" fill="#f8faf9"/>
+<text x="600" y="50" text-anchor="middle" font-family="Calibri,Arial" font-size="32" font-weight="700" fill="#174c43">Modelo de configuración y productos mayoristas</text>
+<g font-family="Calibri,Arial" font-size="18">
+<g fill="#d9ebe6" stroke="#28715f" stroke-width="2">
+<rect x="70" y="150" rx="12" width="300" height="140"/>
+<text x="220" y="190" text-anchor="middle" font-weight="700">zonas_envio</text>
+<text x="220" y="220" text-anchor="middle">id PK</text><text x="220" y="250" text-anchor="middle">nombre UNIQUE</text><text x="220" y="280" text-anchor="middle">tarifa · envio_gratis · activa</text>
+<rect x="450" y="150" rx="12" width="300" height="140"/>
+<text x="600" y="190" text-anchor="middle" font-weight="700">formas_pago</text>
+<text x="600" y="220" text-anchor="middle">id PK</text><text x="600" y="250" text-anchor="middle">nombre UNIQUE</text><text x="600" y="280" text-anchor="middle">activa</text>
+<rect x="830" y="150" rx="12" width="300" height="140"/>
+<text x="980" y="190" text-anchor="middle" font-weight="700">configuracion_tienda</text>
+<text x="980" y="220" text-anchor="middle">clave PK</text><text x="980" y="250" text-anchor="middle">valor VARCHAR</text><text x="980" y="280" text-anchor="middle">Ej.: envio_gratis_desde</text>
+</g>
+<g fill="#edf6f3" stroke="#28715f" stroke-width="2">
+<rect x="260" y="390" rx="12" width="300" height="120"/>
+<text x="410" y="430" text-anchor="middle" font-weight="700">productos</text>
+<text x="410" y="460" text-anchor="middle">id PK · precio · stock</text><text x="410" y="490" text-anchor="middle">estado · tipo_mascota</text>
+<rect x="640" y="390" rx="12" width="300" height="120"/>
+<text x="790" y="430" text-anchor="middle" font-weight="700">configuracion_producto_mayorista</text>
+<text x="790" y="460" text-anchor="middle">producto_id PK/FK</text><text x="790" y="490" text-anchor="middle">unidad · gestiona_produccion</text>
+</g>
+<path d="M560 450H640" fill="none" stroke="#28715f" stroke-width="3"/>
+<text x="600" y="435" text-anchor="middle" font-family="Calibri,Arial" font-size="18" fill="#174c43">1:1 opcional</text>
+</g>
+</svg>

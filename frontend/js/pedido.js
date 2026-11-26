@@ -1,5 +1,30 @@
 ﻿let configuracionEnvio = { tarifas: {}, envio_gratis_desde: 20, zonas_envio_gratis: [], formas_pago: [] };
 let productosPedido = [];
+const claveAlmacenamientoIdempotencia = 'charqui_clave_idempotencia_pedido';
+const formatoClaveIdempotencia = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function generarClaveIdempotencia() {
+  if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+    throw new Error('Este navegador no permite proteger los reintentos del pedido. Actualiza el navegador para continuar.');
+  }
+  if (typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hexadecimal = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hexadecimal.slice(0, 8)}-${hexadecimal.slice(8, 12)}-${hexadecimal.slice(12, 16)}-${hexadecimal.slice(16, 20)}-${hexadecimal.slice(20)}`;
+}
+
+function obtenerClaveIdempotencia() {
+  let clave = localStorage.getItem(claveAlmacenamientoIdempotencia);
+  if (!formatoClaveIdempotencia.test(clave || '')) {
+    clave = generarClaveIdempotencia();
+    localStorage.setItem(claveAlmacenamientoIdempotencia, clave);
+  }
+  return clave;
+}
 
 function mostrarErrorCampo(campo) {
   const aviso = document.getElementById(`error-${campo.id}`);
@@ -122,11 +147,22 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
 
   botonEnviar.disabled = true;
   try {
+    const claveIdempotencia = obtenerClaveIdempotencia();
     const respuesta = await fetch('/api/pedidos', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': claveIdempotencia },
+      body: JSON.stringify(datos)
     });
     const pedido = await leerRespuestaJson(respuesta);
+    if (respuesta.status === 429) {
+      const retryAfter = Number(respuesta.headers.get('Retry-After'));
+      const espera = Number.isFinite(retryAfter) && retryAfter > 0
+        ? ` Espera ${Math.ceil(retryAfter)} segundos antes de reintentar.`
+        : '';
+      throw new Error(`El servidor limitó temporalmente la solicitud.${espera} Conservamos tu carrito y la clave de esta compra para evitar duplicados.`);
+    }
     if (!respuesta.ok) throw new Error(pedido.error || 'No se pudo registrar el pedido.');
+    localStorage.removeItem(claveAlmacenamientoIdempotencia);
     localStorage.removeItem('charqui_carrito');
     window.dispatchEvent(new Event('charqui-carrito-actualizado'));
     const lista = pedido.productos.map((item) => `${item.nombre} x ${item.cantidad}: $${Number(item.subtotal).toFixed(2)}`).join('\n');

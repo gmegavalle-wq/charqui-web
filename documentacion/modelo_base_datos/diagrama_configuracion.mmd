@@ -1,0 +1,18 @@
+erDiagram
+  CONFIGURACION_TIENDA {
+    varchar clave PK
+    varchar valor
+  }
+  ZONAS_ENVIO {
+    int id PK
+    varchar nombre UK
+    decimal tarifa
+    tinyint envio_gratis
+    tinyint activa
+  }
+  FORMAS_PAGO {
+    int id PK
+    varchar nombre UK
+    tinyint activa
+  }
+  PRODUCTOS ||--o| CONFIGURACION_PRODUCTO_MAYORISTA : se_configura

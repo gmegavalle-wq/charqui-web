@@ -1,6 +1,6 @@
 ﻿const express = require('express');
 const bcrypt = require('bcrypt');
-const { randomBytes } = require('crypto');
+const { createHash, randomBytes } = require('crypto');
 const conexion = require('../base_datos');
 const verificarAdministrador = require('../middleware/administrador');
 const crearLimitadorSolicitudes = require('../middleware/limitador_solicitudes');
@@ -9,8 +9,9 @@ const { coordenadasValidas } = require('../utilidades/validaciones_pedido');
 const { cargarConfiguracion } = require('./envios');
 
 const rutas = express.Router();
-const limitarCreacionPedido = crearLimitadorSolicitudes({ limite: 5, ventanaMs: 10 * 60 * 1000 });
+const limitarCreacionPedido = crearLimitadorSolicitudes({ limite: 15, ventanaMs: 10 * 60 * 1000 });
 const limitarConsultaPedido = crearLimitadorSolicitudes({ limite: 30, ventanaMs: 60 * 1000 });
+const formatoClaveIdempotencia = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const transiciones = {
   recibido_y_confirmado: ['en_preparacion'],
   en_preparacion: ['listo_para_despacho'],
@@ -38,6 +39,74 @@ function leerTexto(valor, limite) {
   return texto.length <= limite ? texto : null;
 }
 
+function crearHuellaSolicitudPedido(datos, cantidades) {
+  const solicitud = {
+    cliente: datos.cliente,
+    direccion: datos.direccion,
+    zona: datos.zona,
+    formaPago: datos.formaPago,
+    camposAdicionales: datos.camposAdicionales,
+    latitud: datos.latitud,
+    longitud: datos.longitud,
+    productos: [...cantidades.entries()]
+      .sort(([idA], [idB]) => idA - idB)
+      .map(([id, cantidad]) => ({ id, cantidad }))
+  };
+  return createHash('sha256').update(JSON.stringify(solicitud)).digest('hex');
+}
+
+async function buscarPedidoIdempotente(clave, huella) {
+  const [registros] = await conexion.execute(
+    'SELECT huella_solicitud, pedido_id FROM idempotencia_pedidos WHERE clave = ?',
+    [clave]
+  );
+  if (!registros.length) return null;
+  if (registros[0].huella_solicitud !== huella) return { error: 'conflicto' };
+  if (!registros[0].pedido_id) return { error: 'procesando' };
+
+  const idPedido = Number(registros[0].pedido_id);
+  const [pedidos] = await conexion.execute(
+    `SELECT id, total, costo_envio, zona_entrega, forma_pago,
+       UNIX_TIMESTAMP(fecha) AS token_emitido_en
+     FROM pedidos WHERE id = ?`,
+    [idPedido]
+  );
+  if (!pedidos.length) throw new Error('La clave de idempotencia apunta a un pedido inexistente.');
+
+  const detalles = await cargarDetalles(idPedido);
+  const productos = detalles.map((detalle) => ({
+    id: Number(detalle.producto_id),
+    cantidad: Number(detalle.cantidad),
+    subtotal: Number(detalle.subtotal),
+    nombre: detalle.nombre
+  }));
+  const subtotal = Number(productos.reduce((suma, producto) => suma + producto.subtotal, 0).toFixed(2));
+  return {
+    respuesta: {
+      id: Number(pedidos[0].id),
+      total: Number(pedidos[0].total),
+      subtotal,
+      costo_envio: Number(pedidos[0].costo_envio),
+      zona_entrega: pedidos[0].zona_entrega,
+      forma_pago: pedidos[0].forma_pago,
+      token_seguimiento: crearTokenSeguimiento(
+        idPedido, process.env.JWT_SECRETO, Number(pedidos[0].token_emitido_en)
+      ),
+      productos
+    }
+  };
+}
+
+function responderPedidoIdempotente(res, resultado) {
+  if (resultado.error === 'conflicto') {
+    return res.status(409).json({ error: 'Esta clave ya se utilizó con datos distintos. Revisa el pedido antes de iniciar otro.' });
+  }
+  if (resultado.error === 'procesando') {
+    return res.status(409).json({ error: 'El pedido con esta clave todavía se está procesando. Reintenta con la misma clave.' });
+  }
+  return res.status(200).json(resultado.respuesta);
+}
+
 async function cargarDetalles(idPedido, base = conexion) {
   const [detalles] = await base.execute(
     `SELECT d.producto_id, d.cantidad, d.subtotal,
@@ -62,6 +131,11 @@ async function cargarHistorial(idPedido, base = conexion, soloVisible = false) {
 }
 
 rutas.post('/', limitarCreacionPedido, async (req, res) => {
+  const claveEntrada = req.get('Idempotency-Key');
+  if (typeof claveEntrada !== 'string' || !formatoClaveIdempotencia.test(claveEntrada)) {
+    return res.status(400).json({ error: 'La clave de esta compra no es válida. Recarga el checkout para continuar.' });
+  }
+  const claveIdempotencia = claveEntrada.toLowerCase();
   const datos = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
     ? req.body
     : {};
@@ -107,10 +181,53 @@ rutas.post('/', limitarCreacionPedido, async (req, res) => {
   }
 
   const correo = correoEntrada.toLowerCase();
+  const cantidades = new Map();
+  for (const articulo of articulos) {
+    const id = Number(articulo.id);
+    const cantidad = Number(articulo.cantidad);
+    if (!Number.isSafeInteger(id) || id < 1 ||
+        !Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 1000000) {
+      return res.status(400).json({ error: 'Hay un producto o cantidad no válida.' });
+    }
+    const acumulada = (cantidades.get(id) || 0) + cantidad;
+    if (!Number.isSafeInteger(acumulada) || acumulada > 1000000) {
+      return res.status(400).json({ error: 'La cantidad total de un producto supera el máximo permitido.' });
+    }
+    cantidades.set(id, acumulada);
+  }
+
+  const huellaSolicitud = crearHuellaSolicitudPedido({
+    cliente: {
+      nombre,
+      telefono,
+      correo,
+      cedula
+    },
+    direccion,
+    zona,
+    formaPago,
+    camposAdicionales,
+    latitud,
+    longitud
+  }, cantidades);
+
   let transaccion;
+  let duplicadoIdempotencia = false;
   try {
+    const existente = await buscarPedidoIdempotente(claveIdempotencia, huellaSolicitud);
+    if (existente) return responderPedidoIdempotente(res, existente);
+
     transaccion = await conexion.getConnection();
     await transaccion.beginTransaction();
+    try {
+      await transaccion.execute(
+        'INSERT INTO idempotencia_pedidos (clave, huella_solicitud) VALUES (?, ?)',
+        [claveIdempotencia, huellaSolicitud]
+      );
+    } catch (error) {
+      if (error.code === 'ER_DUP_ENTRY') duplicadoIdempotencia = true;
+      throw error;
+    }
     const configuracion = await cargarConfiguracion(transaccion);
     if (!Object.hasOwn(configuracion.tarifas, zona) || !configuracion.formas_pago.includes(formaPago)) {
       const error = new Error('La zona o forma de pago ya no está disponible. Actualiza la página.');
@@ -159,25 +276,6 @@ rutas.post('/', limitarCreacionPedido, async (req, res) => {
       usuarioId = nuevoUsuario.insertId;
     }
 
-    const cantidades = new Map();
-    for (const articulo of articulos) {
-      const id = Number(articulo.id);
-      const cantidad = Number(articulo.cantidad);
-      if (!Number.isSafeInteger(id) || id < 1 ||
-          !Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 1000000) {
-        const error = new Error('Hay un producto o cantidad no válida.');
-        error.status = 400;
-        throw error;
-      }
-      const acumulada = (cantidades.get(id) || 0) + cantidad;
-      if (!Number.isSafeInteger(acumulada) || acumulada > 1000000) {
-        const error = new Error('La cantidad total de un producto supera el máximo permitido.');
-        error.status = 400;
-        throw error;
-      }
-      cantidades.set(id, acumulada);
-    }
-
     let subtotalPedido = 0;
     const detalles = [];
     for (const [id, cantidad] of cantidades) {
@@ -219,7 +317,14 @@ rutas.post('/', limitarCreacionPedido, async (req, res) => {
       `INSERT INTO pedidos (${campos.map((campo) => `\`${campo}\``).join(', ')})
        VALUES (${campos.map(() => '?').join(', ')})`, valores
     );
-    const tokenSeguimiento = crearTokenSeguimiento(nuevoPedido.insertId, process.env.JWT_SECRETO);
+    const [[pedidoCreado]] = await transaccion.execute(
+      'SELECT UNIX_TIMESTAMP(fecha) AS token_emitido_en FROM pedidos WHERE id = ?',
+      [nuevoPedido.insertId]
+    );
+    if (!pedidoCreado) throw new Error('No se pudo determinar la fecha del pedido para su seguimiento.');
+    const tokenSeguimiento = crearTokenSeguimiento(
+      nuevoPedido.insertId, process.env.JWT_SECRETO, Number(pedidoCreado.token_emitido_en)
+    );
 
     for (const detalle of detalles) {
       await transaccion.execute(
@@ -243,6 +348,15 @@ rutas.post('/', limitarCreacionPedido, async (req, res) => {
        (pedido_id, estado_anterior, estado_nuevo, observacion, visible_cliente)
        VALUES (?, NULL, 'recibido_y_confirmado', 'Pedido creado desde la tienda.', 1)`, [nuevoPedido.insertId]
     );
+    const [idempotenciaActualizada] = await transaccion.execute(
+      `UPDATE idempotencia_pedidos
+       SET pedido_id = ?
+       WHERE clave = ? AND huella_solicitud = ? AND pedido_id IS NULL`,
+      [nuevoPedido.insertId, claveIdempotencia, huellaSolicitud]
+    );
+    if (idempotenciaActualizada.affectedRows !== 1) {
+      throw new Error('No se pudo completar el registro de idempotencia del pedido.');
+    }
 
     await transaccion.commit();
     return res.status(201).json({
@@ -255,6 +369,15 @@ rutas.post('/', limitarCreacionPedido, async (req, res) => {
     if (transaccion) {
       try { await transaccion.rollback(); }
       catch (errorRollback) { console.error('No se pudo revertir la transacción del pedido:', errorRollback.code || 'Error'); }
+    }
+    if (duplicadoIdempotencia) {
+      try {
+        const existente = await buscarPedidoIdempotente(claveIdempotencia, huellaSolicitud);
+        if (existente) return responderPedidoIdempotente(res, existente);
+      } catch (errorLectura) {
+        console.error('No se pudo recuperar el resultado idempotente del pedido:', errorLectura.code || 'Error');
+        return res.status(500).json({ error: 'No se pudo comprobar el resultado del pedido. Reintenta con la misma clave.' });
+      }
     }
     if (error.code) console.error('Error al registrar el pedido:', error.code);
     const estado = error.status || 500;

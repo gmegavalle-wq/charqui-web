@@ -26,6 +26,15 @@ test('token de seguimiento solo verifica con su secreto y pedido', () => {
   assert.throws(() => verificarTokenSeguimiento(token, `${secreto}x`));
 });
 
+test('token de seguimiento puede reproducirse con la fecha original de emisión', () => {
+  const secreto = 's'.repeat(LONGITUD_MINIMA_SECRETO_JWT);
+  const emitidoEn = 1_700_000_000;
+  assert.equal(
+    crearTokenSeguimiento(42, secreto, emitidoEn),
+    crearTokenSeguimiento(42, secreto, emitidoEn)
+  );
+});
+
 test('limitador responde 429 y Retry-After al alcanzar el umbral', () => {
   let ahora = 1_000;
   let solicitudesSiguientes = 0;

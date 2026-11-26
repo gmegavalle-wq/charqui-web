@@ -11,9 +11,16 @@ function claveSeguimiento(secretoJwt) {
     .digest();
 }
 
-function crearTokenSeguimiento(idPedido, secretoJwt) {
+function crearTokenSeguimiento(idPedido, secretoJwt, emitidoEn) {
+  const contenido = { alcance };
+  if (emitidoEn !== undefined) {
+    if (!Number.isSafeInteger(emitidoEn) || emitidoEn < 1) {
+      throw new TypeError('La fecha de emisión del seguimiento no es válida.');
+    }
+    contenido.iat = emitidoEn;
+  }
   return jwt.sign(
-    { alcance },
+    contenido,
     claveSeguimiento(secretoJwt),
     {
       algorithm: 'HS256',
