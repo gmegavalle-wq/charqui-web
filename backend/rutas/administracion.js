@@ -74,10 +74,14 @@ rutas.get('/dashboard', async (req, res) => {
       'SELECT estado, COUNT(*) AS cantidad FROM pedidos GROUP BY estado'
     );
     const cantidadPorEstado = Object.fromEntries(conteos.map((fila) => [fila.estado, Number(fila.cantidad)]));
-    const [[ventas]] = await conexion.execute(
+    const [[finanzas]] = await conexion.execute(
       `SELECT
-        COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_hoy,
-        COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_mes
+        COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos_hoy,
+        COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos_mes,
+        COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes_hoy,
+        COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes_mes,
+        COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados_hoy,
+        COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados_mes
        FROM pedidos`
     );
     const [[bajoStock]] = await conexion.execute(
@@ -86,7 +90,12 @@ rutas.get('/dashboard', async (req, res) => {
     return res.json({
       pedidos: Object.fromEntries(estadosPedido.map((estado) => [estado, cantidadPorEstado[estado] || 0])),
       pedidos_legacy: cantidadPorEstado.en_tu_puerta || 0,
-      ventas_hoy: Number(ventas.ventas_hoy), ventas_mes: Number(ventas.ventas_mes),
+      valor_pedidos_hoy: Number(finanzas.valor_pedidos_hoy),
+      valor_pedidos_mes: Number(finanzas.valor_pedidos_mes),
+      pagos_pendientes_hoy: Number(finanzas.pagos_pendientes_hoy),
+      pagos_pendientes_mes: Number(finanzas.pagos_pendientes_mes),
+      pagos_confirmados_hoy: Number(finanzas.pagos_confirmados_hoy),
+      pagos_confirmados_mes: Number(finanzas.pagos_confirmados_mes),
       productos_stock_bajo: Number(bajoStock.cantidad), limite_stock_bajo: limiteStockBajo
     });
   } catch (error) {
@@ -311,22 +320,30 @@ async function datosReporte(rango) {
     `SELECT COUNT(*) AS pedidos_registrados,
        SUM(estado = 'entregado') AS pedidos_entregados,
        SUM(estado = 'cancelado') AS pedidos_cancelados,
-       COALESCE(SUM(CASE WHEN estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_registradas
+       COALESCE(SUM(CASE WHEN estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos,
+       COALESCE(SUM(CASE WHEN estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes,
+       COALESCE(SUM(CASE WHEN pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados
      FROM pedidos WHERE fecha >= ? AND fecha < DATE_ADD(?, INTERVAL 1 DAY)`, [rango.desde, rango.hasta]
   );
   const [productos] = await conexion.execute(
     `SELECT p.id, p.nombre, SUM(d.cantidad) AS unidades,
-       COALESCE(SUM(d.subtotal), 0) AS ingresos
+       COALESCE(SUM(d.subtotal), 0) AS valor_pedidos
      FROM detalle_pedido d JOIN pedidos o ON o.id = d.pedido_id
      JOIN productos p ON p.id = d.producto_id
      WHERE o.estado <> 'cancelado' AND o.fecha >= ? AND o.fecha < DATE_ADD(?, INTERVAL 1 DAY)
-     GROUP BY p.id, p.nombre ORDER BY unidades DESC, ingresos DESC LIMIT 20`, [rango.desde, rango.hasta]
+     GROUP BY p.id, p.nombre ORDER BY unidades DESC, valor_pedidos DESC LIMIT 20`, [rango.desde, rango.hasta]
   );
   const [[periodos]] = await conexion.execute(
     `SELECT
-       COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_hoy,
-       COALESCE(SUM(CASE WHEN fecha >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_semana,
-       COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS ventas_mes,
+       COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos_hoy,
+       COALESCE(SUM(CASE WHEN fecha >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos_semana,
+       COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' THEN total ELSE 0 END), 0) AS valor_pedidos_mes,
+       COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes_hoy,
+       COALESCE(SUM(CASE WHEN fecha >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes_semana,
+       COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado' AND pago_confirmado = 0 THEN total ELSE 0 END), 0) AS pagos_pendientes_mes,
+       COALESCE(SUM(CASE WHEN DATE(fecha) = CURDATE() AND pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados_hoy,
+       COALESCE(SUM(CASE WHEN fecha >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados_semana,
+       COALESCE(SUM(CASE WHEN YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND pago_confirmado = 1 THEN total ELSE 0 END), 0) AS pagos_confirmados_mes,
        SUM(DATE(fecha) = CURDATE() AND estado <> 'cancelado') AS pedidos_hoy,
        SUM(fecha >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY) AND estado <> 'cancelado') AS pedidos_semana,
        SUM(YEAR(fecha) = YEAR(CURDATE()) AND MONTH(fecha) = MONTH(CURDATE()) AND estado <> 'cancelado') AS pedidos_mes
@@ -356,9 +373,11 @@ rutas.get('/reportes.csv', async (req, res) => {
       ['Pedidos registrados', reporte.resumen.pedidos_registrados],
       ['Pedidos entregados', reporte.resumen.pedidos_entregados || 0],
       ['Pedidos cancelados', reporte.resumen.pedidos_cancelados || 0],
-      ['Ventas registradas', reporte.resumen.ventas_registradas], [],
-      ['Producto', 'Unidades', 'Ingresos'],
-      ...reporte.productos.map((producto) => [producto.nombre, producto.unidades, producto.ingresos])
+      ['Valor en pedidos (excluye cancelados)', reporte.resumen.valor_pedidos],
+      ['Pagos pendientes (excluye cancelados)', reporte.resumen.pagos_pendientes],
+      ['Pagos marcados como confirmados', reporte.resumen.pagos_confirmados], [],
+      ['Producto', 'Unidades', 'Valor en pedidos'],
+      ...reporte.productos.map((producto) => [producto.nombre, producto.unidades, producto.valor_pedidos])
     ];
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="reporte-charqui-${rango.desde}-${rango.hasta}.csv"`);

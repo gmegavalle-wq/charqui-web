@@ -105,7 +105,7 @@ button:disabled {
 }
 
 :focus-visible {
-  outline: 3px solid var(--tierra);
+  outline: 3px solid var(--verde-profundo);
   outline-offset: 3px;
 }
 
@@ -3464,7 +3464,7 @@ td button {
 .admin-pagina .previsualizacion-fotografia { min-width: 0; overflow: hidden; }
 .admin-pagina .previsualizacion-fotografia img { max-width: 100%; object-fit: contain; }
 
-.admin-pagina :focus-visible { outline: 3px solid var(--tierra); outline-offset: 2px; }
+.admin-pagina :focus-visible { outline: 3px solid var(--verde-profundo); outline-offset: 2px; }
 
 @media (min-width: 768px) {
   .admin-pagina .encabezado-admin { grid-template-columns: minmax(0, 1fr) auto; }
@@ -3567,3 +3567,261 @@ td button {
   .admin-pagina .campos-producto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-pagina .campo-producto-ancho { grid-column: 1 / -1; }
 }
+
+/* Prioridad 1: estado claro de disponibilidad en el carrito */
+.linea-carrito-problema {
+  border: 1px solid color-mix(in srgb, var(--tierra) 65%, var(--linea));
+  border-radius: var(--radio);
+  background: color-mix(in srgb, var(--tierra) 12%, var(--marfil));
+}
+
+.aviso-stock {
+  margin: 0.45rem 0 0;
+  color: var(--oliva);
+  font-size: 0.84rem;
+}
+
+.linea-carrito-problema .aviso-stock,
+.linea-carrito-problema .datos-linea-carrito > p {
+  color: var(--carbon);
+  font-weight: 600;
+}
+
+#continuar-pedido[aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+#continuar-pedido:focus-visible {
+  outline: 3px solid var(--verde-profundo);
+  outline-offset: 3px;
+}
+
+/* Prioridad 2: navegación y lectura rápida del panel */
+.admin-pagina .menu-admin {
+  gap: 1rem;
+}
+
+.admin-pagina .grupo-menu-admin {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.admin-pagina .grupo-menu-admin > span {
+  padding: 0.3rem 0.55rem;
+  color: var(--oliva);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-pagina .menu-admin button[aria-current="page"] {
+  box-shadow: inset 3px 0 var(--tierra);
+  font-weight: 700;
+}
+
+.admin-pagina .indicadores-admin {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-pagina .grupo-indicadores-admin > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: 0.8rem;
+}
+
+.admin-pagina .grupo-indicadores-admin h3 {
+  margin: 0 0 0.65rem;
+  color: var(--oliva);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-pagina .indicador-admin {
+  min-height: 100px;
+  justify-content: space-between;
+}
+
+.admin-pagina .indicador-admin:hover {
+  border-color: var(--verde);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 767px) {
+  .admin-pagina .menu-admin {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+    gap: 0.75rem;
+  }
+
+  .admin-pagina .grupo-menu-admin {
+    padding: 0.5rem;
+    border: 1px solid var(--verde-claro);
+    border-radius: 14px;
+    background: var(--blanco-hueso);
+  }
+
+  .admin-pagina .encabezado-admin {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .admin-pagina .encabezado-admin > button {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-pagina .menu-admin { grid-template-columns: 1fr; }
+}
+
+/* Prioridad 3: búsqueda, orden y producto destacado */
+.controles-catalogo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin: 0 auto 1rem;
+}
+
+.controles-catalogo label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--verde-profundo);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.controles-catalogo input,
+.controles-catalogo select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--linea);
+  border-radius: 12px;
+  background: var(--marfil);
+  color: var(--carbon);
+}
+
+.resultado-catalogo {
+  margin: 0 0 0.8rem;
+  color: var(--oliva);
+  font-size: 0.88rem;
+}
+
+.producto-prioritario {
+  border: 2px solid var(--tierra);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--tierra) 26%, transparent);
+}
+
+.producto-prioritario .etiqueta-producto {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 999px;
+  background: var(--verde-profundo);
+  color: var(--marfil);
+  font-size: 0.68rem;
+}
+
+@media (min-width: 600px) {
+  .controles-catalogo { grid-template-columns: minmax(0, 1fr) minmax(210px, 0.45fr); align-items: end; }
+}
+
+.productos-relacionados { margin-top: 2.5rem; }
+.productos-relacionados h2 { margin-bottom: 1rem; }
+
+/* Prioridad 5: bloque de producto prioritario en la portada */
+.destacado-patitas { margin: 0 0 1.5rem; }
+.spotlight-patitas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--tierra);
+  border-radius: 20px;
+  background: var(--marfil);
+}
+.spotlight-patitas > img {
+  width: 100%;
+  height: 100%;
+  min-height: 210px;
+  max-height: 330px;
+  object-fit: contain;
+  background: var(--crema);
+}
+.spotlight-patitas > div { padding: 1.1rem; }
+.spotlight-patitas h3 { margin-bottom: 0.5rem; color: var(--verde-profundo); font-size: clamp(1.5rem, 4vw, 2.2rem); }
+.spotlight-patitas p { max-width: 58ch; }
+.spotlight-patitas .precio-producto { margin: 0 0 0.8rem; }
+@media (min-width: 680px) {
+  .spotlight-patitas { grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr); }
+  .spotlight-patitas > div { padding: clamp(1.2rem, 4vw, 2.5rem); }
+}
+
+/* Prioridades 6 y 7: navegación por teclado y controles consistentes */
+.enlace-saltar {
+  position: fixed;
+  z-index: 1000;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  background: var(--verde-profundo);
+  color: var(--marfil);
+  font-weight: 700;
+  transform: translateY(-160%);
+}
+
+.enlace-saltar:focus { transform: translateY(0); }
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  max-width: 100%;
+}
+
+button:disabled,
+[aria-disabled="true"] { box-shadow: none; }
+
+.boton-desactivado:hover,
+[aria-disabled="true"]:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.tabla-contenedor:focus-visible {
+  outline: 3px solid var(--verde-profundo);
+  outline-offset: 3px;
+}
+
+.producto-pagina .ficha-imagen {
+  display: grid;
+  min-width: 0;
+  min-height: 260px;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+}
+
+.producto-pagina .ficha-imagen .producto-imagen {
+  height: 100%;
+  object-fit: contain;
+}
+
+.producto-pagina .informacion-nutricional {
+  max-width: 760px;
+  margin-top: 1.2rem;
+  padding: 1.1rem;
+  border-top: 1px solid var(--linea);
+  border-bottom: 1px solid var(--linea);
+}
+
+.producto-pagina .informacion-nutricional h2 { margin-bottom: 0.5rem; }
+.producto-pagina .informacion-nutricional p { color: var(--oliva); }
+.producto-pagina .productos-relacionados { padding-top: 1rem; border-top: 1px solid var(--linea); }

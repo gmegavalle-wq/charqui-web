@@ -25,6 +25,8 @@ async function leerRespuestaJson(respuesta) {
 }
 
 async function cargarResumen() {
+  const botonEnviar = document.querySelector('#formulario-pedido button[type=submit]');
+  botonEnviar.disabled = true;
   const carrito = JSON.parse(localStorage.getItem('charqui_carrito') || '[]');
   const resumen = document.getElementById('resumen-pedido');
   if (!carrito.length) {
@@ -50,11 +52,19 @@ async function cargarResumen() {
   productosPedido = await Promise.all(carrito.map(async (item) => {
     const respuesta = await fetch(`/api/productos/${item.id}`);
     const producto = await leerRespuestaJson(respuesta);
-    if (!respuesta.ok) throw new Error(producto.error);
+    if (!respuesta.ok) throw new Error(`${producto.error || 'Un producto ya no está disponible.'} Vuelve al carrito para revisarlo.`);
+    const stock = Number(producto.stock);
+    if (producto.estado !== 'disponible' || stock < 1) {
+      throw new Error(`${producto.nombre} está agotado. Vuelve al carrito para quitarlo antes de continuar.`);
+    }
+    if (Number(item.cantidad) > stock) {
+      throw new Error(`De ${producto.nombre} quedan ${stock} unidades y tienes ${item.cantidad} en el carrito. Vuelve al carrito y ajusta la cantidad.`);
+    }
     return { id: producto.id, nombre: producto.nombre, cantidad: item.cantidad,
       precio: Number(producto.precio_oferta || producto.precio) };
   }));
   dibujarResumen();
+  botonEnviar.disabled = false;
   zonas.addEventListener('change', dibujarResumen);
 }
 
@@ -78,6 +88,7 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
   const mensaje = document.getElementById('mensaje-pedido');
   const formulario = evento.currentTarget;
   if (!formulario.reportValidity()) return;
+  const botonEnviar = formulario.querySelector('button[type="submit"]');
 
   const telefono = document.getElementById('telefono').value.trim();
   if (!/^[+0-9 ()-]{7,20}$/.test(telefono)) {
@@ -109,6 +120,7 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
     productos: productosPedido.map((item) => ({ id: item.id, cantidad: item.cantidad }))
   };
 
+  botonEnviar.disabled = true;
   try {
     const respuesta = await fetch('/api/pedidos', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
@@ -118,10 +130,13 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
     localStorage.removeItem('charqui_carrito');
     window.dispatchEvent(new Event('charqui-carrito-actualizado'));
     const lista = pedido.productos.map((item) => `${item.nombre} x ${item.cantidad}: $${Number(item.subtotal).toFixed(2)}`).join('\n');
-    const resumen = `Hola, quiero coordinar el pago del pedido #${pedido.id}.\n${lista}\nEnvío: $${Number(pedido.costo_envio).toFixed(2)}\nTotal: $${Number(pedido.total).toFixed(2)}\nForma de pago: ${pedido.forma_pago}`;
+    const seguimiento = new URL('/mis-pedidos.html', window.location.origin);
+    seguimiento.hash = new URLSearchParams({ token: pedido.token_seguimiento }).toString();
+    const resumen = `Hola, quiero coordinar el pago del pedido #${pedido.id}.\n${lista}\nEnvío: $${Number(pedido.costo_envio).toFixed(2)}\nTotal: $${Number(pedido.total).toFixed(2)}\nForma de pago: ${pedido.forma_pago}\nSeguimiento privado: ${seguimiento.href}`;
     window.location.href = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(resumen)}`;
   } catch (error) {
     mensaje.textContent = error.message;
+    botonEnviar.disabled = false;
   }
 });
 
@@ -134,6 +149,6 @@ formularioPedido.addEventListener('change', (evento) => {
   if (evento.target.id) mostrarErrorCampo(evento.target);
 });
 
-cargarResumen().catch(() => {
-  document.getElementById('mensaje-pedido').textContent = 'No se pudo cargar el resumen del pedido.';
+cargarResumen().catch((error) => {
+  document.getElementById('mensaje-pedido').textContent = error.message || 'No se pudo cargar el resumen del pedido.';
 });

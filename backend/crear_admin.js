@@ -3,8 +3,18 @@ const bcrypt = require('bcrypt');
 const conexion = require('./base_datos');
 
 async function crearAdministrador() {
-  const correo = 'admin@charqui.com';
-  const contrasena = await bcrypt.hash('admin123', 10);
+  const correoConfigurado = process.env.ADMIN_CORREO;
+  const contrasena = process.env.ADMIN_CONTRASENA;
+  if (typeof correoConfigurado !== 'string' || typeof contrasena !== 'string') {
+    throw new Error('Configura ADMIN_CORREO y ADMIN_CONTRASENA para crear el administrador.');
+  }
+  const correo = correoConfigurado.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) ||
+      contrasena.length < 16 ||
+      !/[a-z]/.test(contrasena) || !/[A-Z]/.test(contrasena) ||
+      !/\d/.test(contrasena) || !/[^A-Za-z0-9]/.test(contrasena)) {
+    throw new Error('El correo o la contraseña no cumple los requisitos de seguridad.');
+  }
 
   try {
     const [usuarios] = await conexion.execute(
@@ -12,23 +22,24 @@ async function crearAdministrador() {
       [correo]
     );
     if (usuarios.length) {
-      await conexion.execute(
-        "UPDATE usuarios SET nombre = ?, contrasena = ?, rol = 'administrador' WHERE correo = ?",
-        ['Administrador Charqui', contrasena, correo]
-      );
-    } else {
-      await conexion.execute(
-        "INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol) VALUES (?, ?, ?, ?, 'administrador')",
-        ['Administrador Charqui', correo, contrasena, '']
-      );
+      throw new Error('Ya existe una cuenta con ese correo. Utiliza el procedimiento seguro de recuperación.');
     }
-    console.log('Administrador de prueba listo: admin@charqui.com / admin123');
+
+    const contrasenaCifrada = await bcrypt.hash(contrasena, 12);
+    await conexion.execute(
+      "INSERT INTO usuarios (nombre, correo, contrasena, telefono, rol) VALUES (?, ?, ?, ?, 'administrador')",
+      ['Administrador Charqui', correo, contrasenaCifrada, '']
+    );
+    console.log('Cuenta de administrador creada.');
   } catch (error) {
-    console.error('No se pudo crear el administrador:', error.message);
+    console.error('No se pudo crear el administrador:', error.code || error.message);
     process.exitCode = 1;
   } finally {
     await conexion.end();
   }
 }
 
-crearAdministrador();
+crearAdministrador().catch((error) => {
+  console.error(error.message);
+  process.exitCode = 1;
+});

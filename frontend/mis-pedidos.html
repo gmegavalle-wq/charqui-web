@@ -10,17 +10,10 @@
     <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a class="actual" aria-current="page" href="/mis-pedidos.html">Mis Pedidos</a><a href="/mayoristas.html">Mayoristas</a></nav>
     <div class="acciones-cabecera"><a class="enlace-carrito" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a class="actual" aria-current="page" href="/mis-pedidos.html">Mis Pedidos</a><a href="/mayoristas.html">Mayoristas</a></nav></details></div>
   </div></header>
-  <main class="contenido-pagina pedidos-cliente"><section class="encabezado-pagina revelar"><p class="sobrelinea">TU HISTORIAL</p><h1>Mis pedidos</h1><p>Verifica con cédula, correo o teléfono y el número de pedido.</p></section><form id="buscar-pedidos" class="formulario-busqueda revelar">
-    <label for="tipo-identificador">Verificar con</label>
-    <select id="tipo-identificador" required>
-      <option value="cedula">Cédula</option>
-      <option value="correo">Correo registrado</option>
-      <option value="telefono">Teléfono registrado</option>
-    </select>
-    <label for="dato-cliente">Cédula, correo o teléfono</label>
-    <input id="dato-cliente" required autocomplete="off">
-    <label for="numero-pedido">Número de pedido</label>
-    <input id="numero-pedido" type="number" min="1" step="1" required>
+  <main class="contenido-pagina pedidos-cliente"><section class="encabezado-pagina revelar"><p class="sobrelinea">TU HISTORIAL</p><h1>Mis pedidos</h1><p>Abre el enlace privado que recibiste al confirmar tu pedido. No lo compartas con otras personas.</p></section><form id="buscar-pedidos" class="formulario-busqueda revelar">
+    <label for="token-seguimiento">Enlace o token privado de seguimiento</label>
+    <input id="token-seguimiento" type="text" required autocomplete="off" maxlength="2048" aria-describedby="ayuda-token-seguimiento">
+    <small id="ayuda-token-seguimiento" class="texto-secundario">El enlace de seguimiento también aparece en el mensaje de WhatsApp que preparaste al confirmar la compra.</small>
     <button class="boton boton-principal" type="submit">Buscar pedido</button>
   </form><p id="mensaje-mis-pedidos" class="error" aria-live="polite"></p><div id="lista-pedidos" class="lista-pedidos"></div></main>
   <footer class="pie-pagina"><div class="pie-interior pie-interior-redes"><a class="marca marca-pie" href="/"><img class="logo-imagen" src="/img/logo.png" alt="Logo Charqui"><span><span class="marca-nombre">Charqui</span><span class="marca-eslogan">dale sabor a su vida</span></span></a><nav aria-label="Enlaces del pie"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/mayoristas.html">Mayoristas</a><a href="/admin.html">Administración</a><a href="/politica.html">Política de privacidad</a></nav><div class="pie-contacto"><a href="https://wa.me/593994324874" data-whatsapp>Escríbenos por WhatsApp</a><p>Los precios son los vigentes del catálogo.</p></div><div class="redes-sociales-footer" aria-label="S&#237;guenos en redes sociales"><p>S&#237;guenos en redes sociales</p><div class="redes-iconos">

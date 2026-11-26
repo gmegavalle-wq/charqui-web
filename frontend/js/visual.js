@@ -1,3 +1,24 @@
+
+function mejorarAccesibilidadComun() {
+  const principal = document.querySelector('main');
+  if (principal) {
+    if (!principal.id) principal.id = 'contenido-principal';
+    principal.tabIndex = -1;
+  }
+  if (document.querySelector('.enlace-saltar')) return;
+  const enlace = document.createElement('a');
+  enlace.className = 'enlace-saltar';
+  enlace.href = principal ? `#${principal.id}` : '#';
+  enlace.textContent = 'Saltar al contenido principal';
+  document.body.insertBefore(enlace, document.body.firstChild);
+  document.querySelectorAll('.tabla-contenedor').forEach((tabla) => {
+    tabla.tabIndex = 0;
+    tabla.setAttribute('role', 'region');
+    if (!tabla.hasAttribute('aria-label')) tabla.setAttribute('aria-label', 'Tabla desplazable; usa el desplazamiento horizontal para ver todas las columnas.');
+  });
+}
+
+mejorarAccesibilidadComun();
 const NUMERO_WHATSAPP = '593994324874';
 window.NUMERO_WHATSAPP = NUMERO_WHATSAPP;
 
@@ -40,6 +61,25 @@ function prepararImagenAlternativa(imagen) {
     alternativa.textContent = 'Fotografía no disponible';
     imagen.replaceWith(alternativa);
   }, { once: true });
+}
+
+function esProductoPrioritario(producto) {
+  const idConfigurado = Number(window.CHARQUI_PRODUCTO_PRIORITARIO_ID);
+  if (Number.isSafeInteger(idConfigurado) && idConfigurado > 0 &&
+      Number(producto.id) === idConfigurado) return true;
+
+  const normalizar = (texto) => String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[_-]+/g, ' ');
+  const nombre = normalizar(producto.nombre);
+  const descripcion = normalizar(producto.descripcion);
+  const archivoImagen = normalizar(String(producto.imagen || '').split(/[\\/]/).pop());
+  const patronProducto = /\bpatitas?\b.{0,30}\bpollo\b|\bpollo\b.{0,30}\bpatitas?\b/;
+
+  return patronProducto.test(nombre) || patronProducto.test(descripcion) ||
+    /\bpatitas?\s+pollo\b/.test(nombre) || /patitas?\s+pollo/.test(archivoImagen);
 }
 
 if ('IntersectionObserver' in window) {

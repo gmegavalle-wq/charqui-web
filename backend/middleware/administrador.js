@@ -11,7 +11,11 @@ function verificarAdministrador(req, res, siguiente) {
   }
 
   try {
-    const datos = jwt.verify(token, process.env.JWT_SECRETO);
+    const datos = jwt.verify(token, process.env.JWT_SECRETO, {
+      algorithms: ['HS256'],
+      issuer: 'charqui',
+      audience: 'administracion'
+    });
     if (datos.rol !== 'administrador') {
       return res.status(403).json({ error: 'No tienes permiso de administrador.' });
     }

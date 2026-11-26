@@ -46,15 +46,10 @@
       <p id="mensaje-panel" class="mensaje-panel" aria-live="polite"></p>
       <div class="administracion-layout">
         <nav class="menu-admin" aria-label="Módulos del administrador">
-          <button type="button" data-modulo="dashboard" class="activo">Resumen</button>
-          <button type="button" data-modulo="pedidos">Pedidos</button>
-          <button type="button" data-modulo="entregas">Entregas</button>
-          <button type="button" data-modulo="inventario">Inventario</button>
-          <button type="button" data-modulo="clientes">Clientes</button>
-          <button type="button" data-modulo="reportes">Reportes</button>
-          <button type="button" data-modulo="envios">Envíos y pagos</button>
-          <button type="button" data-modulo="productos">Productos</button>
-          <button type="button" data-modulo="mayoristas">Mayoristas</button>
+          <div class="grupo-menu-admin"><span>Operaciones</span><button type="button" data-modulo="dashboard" class="activo" aria-current="page">Resumen</button><button type="button" data-modulo="pedidos">Pedidos</button><button type="button" data-modulo="entregas">Entregas</button></div>
+          <div class="grupo-menu-admin"><span>Comercial</span><button type="button" data-modulo="clientes">Clientes</button><button type="button" data-modulo="mayoristas">Mayoristas</button></div>
+          <div class="grupo-menu-admin"><span>Inventario</span><button type="button" data-modulo="productos">Productos</button><button type="button" data-modulo="inventario">Existencias</button></div>
+          <div class="grupo-menu-admin"><span>Administración y análisis</span><button type="button" data-modulo="envios">Envíos y pagos</button><button type="button" data-modulo="reportes">Reportes</button></div>
         </nav>
 
         <div class="contenido-admin">
@@ -114,10 +109,11 @@
           </section>
 
           <section id="modulo-reportes" class="modulo-admin" hidden>
-            <h2>Reportes de ventas</h2>
+            <h2>Reportes comerciales</h2>
             <form id="filtros-reporte" class="busqueda-admin"><label for="reporte-desde">Desde</label><input id="reporte-desde" type="date"><label for="reporte-hasta">Hasta</label><input id="reporte-hasta" type="date"><button type="submit">Consultar</button><a id="exportar-reporte" class="boton boton-secundario" href="/api/administracion/reportes.csv">Descargar CSV</a></form>
             <div id="resumen-reporte" class="resumen-reporte"></div>
-            <h3>Productos vendidos</h3><div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th></tr></thead><tbody id="tabla-reporte-productos"></tbody></table></div>
+            <p class="texto-secundario">El valor en pedidos excluye cancelaciones. Los pagos pendientes también las excluyen; los pagos confirmados siguen el estado registrado y no descuentan devoluciones.</p>
+            <h3>Productos en pedidos</h3><div class="tabla-contenedor"><table><thead><tr><th>Producto</th><th>Unidades</th><th>Valor en pedidos</th></tr></thead><tbody id="tabla-reporte-productos"></tbody></table></div>
           </section>
 
           <section id="modulo-envios" class="modulo-admin" hidden>

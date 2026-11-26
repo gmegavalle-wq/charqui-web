@@ -3,6 +3,29 @@ function escaparHtml(texto) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+
+async function cargarProductoPrioritario() {
+  const contenedor = document.getElementById('producto-prioritario-inicio');
+  try {
+    const respuesta = await fetch('/api/productos');
+    if (!respuesta.ok) return;
+    const productos = await respuesta.json();
+    const producto = productos.find(esProductoPrioritario);
+    if (!producto) return;
+    const disponible = producto.estado === 'disponible' && Number(producto.stock) > 0;
+    const precio = Number(producto.precio_oferta || producto.precio);
+    contenedor.innerHTML = `<article class="spotlight-patitas">
+      <img src="/img/${encodeURIComponent(producto.imagen || '')}" alt="${escaparHtml(producto.nombre)}" loading="lazy">
+      <div><p class="sobrelinea">Producto prioritario de CHARQUI</p><h3>${escaparHtml(producto.nombre)}</h3>
+      <p>${escaparHtml(producto.descripcion)}</p><p class="precio-producto"><strong>$${precio.toFixed(2)}</strong></p>
+      <a class="boton boton-principal" href="/producto.html?id=${producto.id}">${disponible ? 'Ver patitas de pollo' : 'Ver detalles'}</a>
+      ${disponible ? '' : '<p class="disponibilidad agotado">Agotado por el momento</p>'}</div>
+    </article>`;
+    contenedor.querySelectorAll('img').forEach(prepararImagenAlternativa);
+  } catch (error) {
+    // La portada mantiene el catálogo y las ofertas aunque este bloque no cargue.
+  }
+}
 async function cargarOfertas() {
   const contenedor = document.getElementById('productos-oferta');
   const mensaje = document.getElementById('mensaje-inicio');
@@ -30,3 +53,4 @@ async function cargarOfertas() {
 }
 
 cargarOfertas();
+cargarProductoPrioritario();

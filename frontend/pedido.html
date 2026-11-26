@@ -10,13 +10,13 @@
     <nav class="navegacion-desktop" aria-label="Navegación principal"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/mayoristas.html">Mayoristas</a></nav>
     <div class="acciones-cabecera"><a class="enlace-carrito actual" aria-current="page" href="/carrito.html" aria-label="Carrito, 0 productos">Carrito <span id="contador-carrito" class="contador-carrito">0</span></a><details class="menu-movil"><summary aria-label="Abrir menú">☰</summary><nav aria-label="Navegación móvil"><a href="/">Inicio</a><a href="/catalogo.html">Catálogo</a><a href="/mis-pedidos.html">Mis Pedidos</a><a href="/mayoristas.html">Mayoristas</a></nav></details></div>
   </div></header>
-  <main class="contenido-pagina pedido-pagina"><section class="encabezado-pagina revelar"><p class="sobrelinea">CASI LISTO</p><h1>Confirma tu pedido</h1><p>Completa tus datos de entrega. El pago se coordina por WhatsApp, no se realiza en línea.</p></section>
+  <main class="contenido-pagina pedido-pagina"><section class="encabezado-pagina revelar"><p class="sobrelinea">CASI LISTO</p><h1>Confirma tu pedido</h1><p>Completa tus datos y revisa el costo de envío según tu zona. Al registrar el pedido, continuarás en WhatsApp para coordinar el pago.</p></section>
     <ol class="pasos-compra revelar"><li class="paso-completo"><span>✓</span> Carrito</li><li class="paso-activo"><span>2</span> Datos</li><li><span>3</span> Confirmar</li></ol>
     <div class="pedido-columnas"><form id="formulario-pedido" class="formulario-pedido">
       <label for="nombre">Nombre completo</label><input id="nombre" name="nombre" aria-describedby="error-nombre" required><small id="error-nombre" class="error-campo" aria-live="polite"></small>
       <label for="telefono">Teléfono</label><input id="telefono" name="telefono" type="tel" aria-describedby="error-telefono" required><small id="error-telefono" class="error-campo" aria-live="polite"></small>
       <label for="correo">Correo electrónico</label><input id="correo" name="correo" type="email" aria-describedby="error-correo" required><small id="error-correo" class="error-campo" aria-live="polite"></small>
-      <label for="cedula">Cédula (opcional)</label><input id="cedula" name="cedula" inputmode="numeric" pattern="[0-9]{6,20}" aria-describedby="ayuda-cedula"><small id="ayuda-cedula" class="texto-secundario">Si la registras, podrás consultar el pedido con su número.</small>
+      <label for="cedula">Cédula (opcional)</label><input id="cedula" name="cedula" inputmode="numeric" pattern="[0-9]{6,20}" aria-describedby="ayuda-cedula"><small id="ayuda-cedula" class="texto-secundario">El seguimiento del pedido se consulta con un enlace privado, no con la cédula.</small>
       <label for="direccion">Dirección exacta</label><textarea id="direccion" name="direccion" aria-describedby="error-direccion" required></textarea><small id="error-direccion" class="error-campo" aria-live="polite"></small>
       <fieldset class="direccion-detallada"><legend>Detalles adicionales de entrega (opcionales)</legend>
         <label for="provincia">Provincia</label><input id="provincia" name="provincia">

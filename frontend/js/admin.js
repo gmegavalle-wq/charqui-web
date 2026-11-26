@@ -34,16 +34,49 @@ function mostrarMensaje(texto, esError = false) {
 }
 
 async function cargarDashboard() {
-  const datos = await pedir('/api/administracion/dashboard');
-  const html = estados.filter(([estado]) => estado !== 'cancelado').map(([estado, nombre]) => `
-    <button class="indicador-admin" type="button" data-estado="${estado}"><span>${nombre}</span><strong>${datos.pedidos[estado] || 0}</strong></button>`);
-  html.push(`<article class="indicador-admin indicador-venta"><span>Ventas de hoy</span><strong>$${Number(datos.ventas_hoy).toFixed(2)}</strong></article>`);
-  html.push(`<article class="indicador-admin indicador-venta"><span>Ventas del mes</span><strong>$${Number(datos.ventas_mes).toFixed(2)}</strong></article>`);
-  html.push(`<button class="indicador-admin indicador-alerta" data-modulo-destino="inventario" type="button"><span>Stock bajo · 5 o menos</span><strong>${datos.productos_stock_bajo}</strong></button>`);
-  html.push(`<button class="indicador-admin indicador-cancelado" data-estado="cancelado" type="button"><span>Cancelados</span><strong>${datos.pedidos.cancelado || 0}</strong></button>`);
-  if (datos.pedidos_legacy) html.push(`<article class="indicador-admin"><span>Estado anterior · En tu Puerta</span><strong>${datos.pedidos_legacy}</strong></article>`);
+  const [resultadoDashboard, resultadoMayoristas] = await Promise.allSettled([
+    pedir('/api/administracion/dashboard'),
+    pedir('/api/mayoristas/admin/solicitudes')
+  ]);
+  if (resultadoDashboard.status === 'rejected') throw resultadoDashboard.reason;
+  const datos = resultadoDashboard.value;
+  const solicitudesMayoristas = resultadoMayoristas.status === 'fulfilled' ? resultadoMayoristas.value : [];
+  const abiertasMayoristas = solicitudesMayoristas.filter((item) =>
+    ['nueva', 'en_revision', 'cotizacion_preparada', 'cotizacion_enviada'].includes(item.estado)
+  ).length;
+  const compromisosMayoristas = solicitudesMayoristas.filter((item) =>
+    ['aceptada', 'convertida_en_pedido'].includes(item.estado)
+  ).length;
+  const pedidosAtencion = [
+    ['recibido_y_confirmado', 'Pedidos pendientes'],
+    ['en_preparacion', 'En preparación'],
+    ['listo_para_despacho', 'Listos para entrega']
+  ];
+  const tarjetasPedidos = pedidosAtencion.map(([estado, nombre]) => `
+    <button class="indicador-admin" type="button" data-estado="${estado}"><span>${nombre}</span><strong>${datos.pedidos[estado] || 0}</strong></button>`).join('');
+  const entregasPendientes = Number(datos.pedidos.listo_para_despacho || 0) + Number(datos.pedidos.en_reparto_local || 0);
+  const tarjetasOperacion = `${tarjetasPedidos}
+    <button class="indicador-admin indicador-entregas" data-modulo-destino="entregas" type="button"><span>Entregas pendientes</span><strong>${entregasPendientes}</strong></button>`;
+  const tarjetasComercial = resultadoMayoristas.status === 'fulfilled'
+    ? `<button class="indicador-admin" data-modulo-destino="mayoristas" type="button"><span>Solicitudes y cotizaciones abiertas</span><strong>${abiertasMayoristas}</strong></button>
+      <button class="indicador-admin" data-modulo-destino="mayoristas" type="button"><span>Compromisos mayoristas</span><strong>${compromisosMayoristas}</strong></button>`
+    : '<article class="indicador-admin"><span>Datos mayoristas</span><strong>No disponibles</strong></article>';
+  const tarjetasInventario = `<button class="indicador-admin indicador-alerta" data-modulo-destino="inventario" type="button"><span>Stock bajo · ${Number(datos.limite_stock_bajo ?? 5)} o menos</span><strong>${datos.productos_stock_bajo}</strong></button>`;
+  const tarjetasVentas = `<article class="indicador-admin indicador-venta"><span>Valor en pedidos · hoy</span><strong>$${Number(datos.valor_pedidos_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos pendientes · hoy</span><strong>$${Number(datos.pagos_pendientes_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos confirmados · hoy</span><strong>$${Number(datos.pagos_confirmados_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Valor en pedidos · mes</span><strong>$${Number(datos.valor_pedidos_mes).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos pendientes · mes</span><strong>$${Number(datos.pagos_pendientes_mes).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos confirmados · mes</span><strong>$${Number(datos.pagos_confirmados_mes).toFixed(2)}</strong></article>`;
+  const notaFinanciera = '<p class="texto-secundario">Los pagos confirmados reflejan el estado registrado en cada pedido; no se registran devoluciones en este sistema.</p>';
+  const tarjetasHistoricas = `<button class="indicador-admin indicador-cancelado" data-estado="cancelado" type="button"><span>Pedidos cancelados</span><strong>${datos.pedidos.cancelado || 0}</strong></button>
+    ${datos.pedidos_legacy ? `<article class="indicador-admin"><span>Estado anterior · En tu Puerta</span><strong>${datos.pedidos_legacy}</strong></article>` : ''}`;
   const contenedor = document.getElementById('indicadores-admin');
-  contenedor.innerHTML = html.join('');
+  contenedor.innerHTML = `<div class="grupo-indicadores-admin"><h3>Operaciones</h3><div>${tarjetasOperacion}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Comercial</h3><div>${tarjetasComercial}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Inventario</h3><div>${tarjetasInventario}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Resumen financiero</h3><div>${tarjetasVentas}</div>${notaFinanciera}</div>
+    <div class="grupo-indicadores-admin"><h3>Histórico</h3><div>${tarjetasHistoricas}</div></div>`;
   contenedor.querySelectorAll('[data-estado]').forEach((boton) => boton.addEventListener('click', () => {
     document.getElementById('filtro-estado-pedido').value = boton.dataset.estado;
     mostrarModulo('pedidos');
@@ -213,15 +246,17 @@ async function cargarReporte() {
   const resumen = reporte.resumen;
   document.getElementById('resumen-reporte').innerHTML = `
     <article>Periodo<strong>${escaparHtml(reporte.desde)} – ${escaparHtml(reporte.hasta)}</strong></article>
-    <article>Hoy<strong>$${Number(reporte.periodos.ventas_hoy).toFixed(2)} · ${Number(reporte.periodos.pedidos_hoy || 0)} pedidos</strong></article>
-    <article>Esta semana<strong>$${Number(reporte.periodos.ventas_semana).toFixed(2)} · ${Number(reporte.periodos.pedidos_semana || 0)} pedidos</strong></article>
-    <article>Este mes<strong>$${Number(reporte.periodos.ventas_mes).toFixed(2)} · ${Number(reporte.periodos.pedidos_mes || 0)} pedidos</strong></article>
-    <article>Ventas registradas<strong>$${Number(resumen.ventas_registradas).toFixed(2)}</strong></article>
+    <article>Valor en pedidos · hoy<strong>$${Number(reporte.periodos.valor_pedidos_hoy).toFixed(2)} · ${Number(reporte.periodos.pedidos_hoy || 0)} pedidos</strong></article>
+    <article>Valor en pedidos · semana<strong>$${Number(reporte.periodos.valor_pedidos_semana).toFixed(2)} · ${Number(reporte.periodos.pedidos_semana || 0)} pedidos</strong></article>
+    <article>Valor en pedidos · mes<strong>$${Number(reporte.periodos.valor_pedidos_mes).toFixed(2)} · ${Number(reporte.periodos.pedidos_mes || 0)} pedidos</strong></article>
+    <article>Pagos pendientes · periodo<strong>$${Number(resumen.pagos_pendientes).toFixed(2)}</strong></article>
+    <article>Pagos confirmados · periodo<strong>$${Number(resumen.pagos_confirmados).toFixed(2)}</strong></article>
+    <article>Valor en pedidos · periodo<strong>$${Number(resumen.valor_pedidos).toFixed(2)}</strong></article>
     <article>Pedidos<strong>${Number(resumen.pedidos_registrados)}</strong></article>
     <article>Entregados<strong>${Number(resumen.pedidos_entregados || 0)}</strong></article>
     <article>Cancelados<strong>${Number(resumen.pedidos_cancelados || 0)}</strong></article>`;
   document.getElementById('tabla-reporte-productos').innerHTML = reporte.productos.map((producto) => `
-    <tr><td>${escaparHtml(producto.nombre)}</td><td>${producto.unidades}</td><td>$${Number(producto.ingresos).toFixed(2)}</td></tr>`).join('')
+    <tr><td>${escaparHtml(producto.nombre)}</td><td>${producto.unidades}</td><td>$${Number(producto.valor_pedidos).toFixed(2)}</td></tr>`).join('')
     || '<tr><td colspan="3">No hay ventas en este periodo.</td></tr>';
   document.getElementById('exportar-reporte').dataset.desde = desde;
   document.getElementById('exportar-reporte').dataset.hasta = hasta;
@@ -676,7 +711,12 @@ async function guardarCapacidadPatitas(evento) {
 
 function mostrarModulo(nombre) {
   document.querySelectorAll('.modulo-admin').forEach((modulo) => { modulo.hidden = modulo.id !== `modulo-${nombre}`; });
-  document.querySelectorAll('.menu-admin [data-modulo]').forEach((boton) => boton.classList.toggle('activo', boton.dataset.modulo === nombre));
+  document.querySelectorAll('.menu-admin [data-modulo]').forEach((boton) => {
+    const activo = boton.dataset.modulo === nombre;
+    boton.classList.toggle('activo', activo);
+    if (activo) boton.setAttribute('aria-current', 'page');
+    else boton.removeAttribute('aria-current');
+  });
   const cargas = {
     dashboard: cargarDashboard, pedidos: cargarPedidos, entregas: cargarEntregas,
     inventario: cargarInventario, clientes: cargarClientes, reportes: cargarReporte,

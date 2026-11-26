@@ -3,9 +3,14 @@ const bcrypt = require('bcrypt');
 const { randomBytes } = require('crypto');
 const conexion = require('../base_datos');
 const verificarAdministrador = require('../middleware/administrador');
+const crearLimitadorSolicitudes = require('../middleware/limitador_solicitudes');
+const { crearTokenSeguimiento, verificarTokenSeguimiento } = require('../servicios/seguimiento_pedido');
+const { coordenadasValidas } = require('../utilidades/validaciones_pedido');
 const { cargarConfiguracion } = require('./envios');
 
 const rutas = express.Router();
+const limitarCreacionPedido = crearLimitadorSolicitudes({ limite: 5, ventanaMs: 10 * 60 * 1000 });
+const limitarConsultaPedido = crearLimitadorSolicitudes({ limite: 30, ventanaMs: 60 * 1000 });
 const transiciones = {
   recibido_y_confirmado: ['en_preparacion'],
   en_preparacion: ['listo_para_despacho'],
@@ -26,11 +31,11 @@ function telefonoValido(telefono) {
   return /^[+0-9 ()-]{7,20}$/.test(String(telefono || '')) && digitos.length >= 7 && digitos.length <= 15;
 }
 
-function coordenadasValidas(latitud, longitud) {
-  if ((latitud === '' || latitud == null) && (longitud === '' || longitud == null)) return true;
-  const lat = Number(latitud);
-  const lon = Number(longitud);
-  return Number.isFinite(lat) && lat >= -90 && lat <= 90 && Number.isFinite(lon) && lon >= -180 && lon <= 180;
+function leerTexto(valor, limite) {
+  if (valor == null) return '';
+  if (typeof valor !== 'string') return null;
+  const texto = valor.trim();
+  return texto.length <= limite ? texto : null;
 }
 
 async function cargarDetalles(idPedido, base = conexion) {
@@ -56,25 +61,52 @@ async function cargarHistorial(idPedido, base = conexion, soloVisible = false) {
   return historial;
 }
 
-rutas.post('/', async (req, res) => {
-  const datos = req.body || {};
-  const cliente = datos.cliente || {};
+rutas.post('/', limitarCreacionPedido, async (req, res) => {
+  const datos = req.body && typeof req.body === 'object' && !Array.isArray(req.body)
+    ? req.body
+    : {};
+  const cliente = datos.cliente && typeof datos.cliente === 'object' && !Array.isArray(datos.cliente)
+    ? datos.cliente
+    : {};
   const articulos = datos.productos;
-  const cedula = String(cliente.cedula || '').replace(/\D/g, '');
-  const direccion = String(datos.direccion_entrega || '').trim();
-  const zona = String(datos.zona_entrega || '');
-  const formaPago = String(datos.forma_pago || '');
-  const latitud = datos.latitud == null || datos.latitud === '' ? null : Number(datos.latitud);
-  const longitud = datos.longitud == null || datos.longitud === '' ? null : Number(datos.longitud);
+  const nombre = leerTexto(cliente.nombre, 100);
+  const telefono = leerTexto(cliente.telefono, 30);
+  const correoEntrada = leerTexto(cliente.correo, 150);
+  const cedulaEntrada = leerTexto(cliente.cedula, 20);
+  const direccion = leerTexto(datos.direccion_entrega, 255);
+  const zona = leerTexto(datos.zona_entrega, 100);
+  const formaPago = leerTexto(datos.forma_pago, 80);
+  const latitudEntrada = datos.latitud == null || datos.latitud === '' ? null : datos.latitud;
+  const longitudEntrada = datos.longitud == null || datos.longitud === '' ? null : datos.longitud;
+  const latitud = latitudEntrada === null ? null : Number(latitudEntrada);
+  const longitud = longitudEntrada === null ? null : Number(longitudEntrada);
+  const camposAdicionales = {
+    provincia: leerTexto(datos.provincia, 100),
+    ciudad: leerTexto(datos.ciudad, 100),
+    sector: leerTexto(datos.sector, 150),
+    calle_principal: leerTexto(datos.calle_principal, 180),
+    numero_domicilio: leerTexto(datos.numero_domicilio, 40),
+    calle_secundaria: leerTexto(datos.calle_secundaria, 180),
+    referencia: leerTexto(datos.referencia, 255)
+  };
+  const cedula = cedulaEntrada || '';
 
-  if (!String(cliente.nombre || '').trim() || !telefonoValido(cliente.telefono) || !correoValido(cliente.correo) ||
-      !direccion || !datos.consentimiento || (cedula && !/^\d{6,20}$/.test(cedula)) ||
-      !coordenadasValidas(latitud, longitud) || !Array.isArray(articulos) || !articulos.length) {
+  if (!nombre || !telefonoValido(telefono) || !correoValido(correoEntrada) ||
+      !direccion || !zona || !formaPago || Object.values(camposAdicionales).some((valor) => valor === null) ||
+      datos.consentimiento !== true ||
+      (cliente.cedula != null && cedulaEntrada === null) ||
+      (cedula && !/^\d{6,20}$/.test(cedula)) ||
+      !coordenadasValidas(latitudEntrada, longitudEntrada) ||
+      !Array.isArray(articulos) || !articulos.length) {
     return res.status(400).json({ error: 'Revisa tus datos, dirección y consentimiento antes de confirmar.' });
   }
+  if (articulos.length > 30 || articulos.some((articulo) =>
+    !articulo || typeof articulo !== 'object' || Array.isArray(articulo)
+  )) {
+    return res.status(400).json({ error: 'La cantidad de productos de la solicitud no es válida.' });
+  }
 
-  const correo = cliente.correo.trim().toLowerCase();
-  const telefono = cliente.telefono.trim();
+  const correo = correoEntrada.toLowerCase();
   let transaccion;
   try {
     transaccion = await conexion.getConnection();
@@ -131,12 +163,19 @@ rutas.post('/', async (req, res) => {
     for (const articulo of articulos) {
       const id = Number(articulo.id);
       const cantidad = Number(articulo.cantidad);
-      if (!Number.isInteger(id) || id < 1 || !Number.isInteger(cantidad) || cantidad < 1) {
+      if (!Number.isSafeInteger(id) || id < 1 ||
+          !Number.isSafeInteger(cantidad) || cantidad < 1 || cantidad > 1000000) {
         const error = new Error('Hay un producto o cantidad no válida.');
         error.status = 400;
         throw error;
       }
-      cantidades.set(id, (cantidades.get(id) || 0) + cantidad);
+      const acumulada = (cantidades.get(id) || 0) + cantidad;
+      if (!Number.isSafeInteger(acumulada) || acumulada > 1000000) {
+        const error = new Error('La cantidad total de un producto supera el máximo permitido.');
+        error.status = 400;
+        throw error;
+      }
+      cantidades.set(id, acumulada);
     }
 
     let subtotalPedido = 0;
@@ -160,6 +199,11 @@ rutas.post('/', async (req, res) => {
     const envioGratis = configuracion.zonas_envio_gratis.includes(zona) && subtotalPedido >= configuracion.envio_gratis_desde;
     const costoEnvio = envioGratis ? 0 : Number(configuracion.tarifas[zona]);
     const total = Number((subtotalPedido + costoEnvio).toFixed(2));
+    if (!Number.isFinite(total) || total > 99999999.99) {
+      const error = new Error('El total del pedido supera el máximo permitido.');
+      error.status = 400;
+      throw error;
+    }
     const campos = [
       'usuario_id', 'direccion_entrega', 'estado', 'total', 'zona_entrega', 'costo_envio', 'forma_pago',
       'provincia', 'ciudad', 'sector', 'calle_principal', 'numero_domicilio', 'calle_secundaria',
@@ -167,14 +211,15 @@ rutas.post('/', async (req, res) => {
     ];
     const valores = [
       usuarioId, direccion, 'recibido_y_confirmado', total, zona, costoEnvio, formaPago,
-      datos.provincia || null, datos.ciudad || null, datos.sector || null,
-      datos.calle_principal || null, datos.numero_domicilio || null, datos.calle_secundaria || null,
-      datos.referencia || null, latitud, longitud
+      camposAdicionales.provincia || null, camposAdicionales.ciudad || null, camposAdicionales.sector || null,
+      camposAdicionales.calle_principal || null, camposAdicionales.numero_domicilio || null,
+      camposAdicionales.calle_secundaria || null, camposAdicionales.referencia || null, latitud, longitud
     ];
     const [nuevoPedido] = await transaccion.execute(
       `INSERT INTO pedidos (${campos.map((campo) => `\`${campo}\``).join(', ')})
        VALUES (${campos.map(() => '?').join(', ')})`, valores
     );
+    const tokenSeguimiento = crearTokenSeguimiento(nuevoPedido.insertId, process.env.JWT_SECRETO);
 
     for (const detalle of detalles) {
       await transaccion.execute(
@@ -203,50 +248,67 @@ rutas.post('/', async (req, res) => {
     return res.status(201).json({
       id: nuevoPedido.insertId, total, subtotal: subtotalPedido, costo_envio: costoEnvio,
       zona_entrega: zona, forma_pago: formaPago,
+      token_seguimiento: tokenSeguimiento,
       productos: detalles.map(({ id, cantidad, subtotal, nombre }) => ({ id, cantidad, subtotal, nombre }))
     });
   } catch (error) {
-    if (transaccion) { try { await transaccion.rollback(); } catch (errorRollback) {} }
+    if (transaccion) {
+      try { await transaccion.rollback(); }
+      catch (errorRollback) { console.error('No se pudo revertir la transacción del pedido:', errorRollback.code || 'Error'); }
+    }
     if (error.code) console.error('Error al registrar el pedido:', error.code);
-    const estado = error.status || (error.code ? 500 : 400);
-    const mensaje = error.code ? 'No se pudo registrar el pedido.' : error.message || 'No se pudo registrar el pedido.';
+    const estado = error.status || 500;
+    const mensaje = error.status ? error.message : 'No se pudo registrar el pedido.';
     return res.status(estado).json({ error: mensaje });
   } finally {
     if (transaccion) transaccion.release();
   }
 });
 
-rutas.get('/cliente', async (req, res) => {
-  const numeroPedido = String(req.query.numero_pedido || '').trim();
-  const cedula = String(req.query.cedula || '').replace(/\D/g, '');
-  const correo = String(req.query.correo || '').trim().toLowerCase();
-  const telefono = String(req.query.telefono || '').trim();
-  if (!/^\d+$/.test(numeroPedido)) return res.status(400).json({ error: 'Escribe el número de pedido.' });
-  if ((!cedula || !/^\d{6,20}$/.test(cedula)) && !correo && !telefono) {
-    return res.status(400).json({ error: 'Verifica con tu cédula, correo o teléfono.' });
+rutas.post('/cliente', limitarConsultaPedido, async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const token = req.body && typeof req.body.token_seguimiento === 'string'
+    ? req.body.token_seguimiento
+    : '';
+  if (!token || token.length > 2048) {
+    return res.status(404).json({ error: 'El enlace de seguimiento no es válido.' });
   }
+
+  let idPedido;
   try {
-    let consulta;
-    let parametros;
-    if (cedula) {
-      consulta = `SELECT p.*, u.nombre, u.correo, u.telefono
-        FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
-        WHERE p.id = ? AND u.cedula = ?`;
-      parametros = [numeroPedido, cedula];
-    } else {
-      consulta = `SELECT p.*, u.nombre, u.correo, u.telefono
-        FROM pedidos p JOIN usuarios u ON u.id = p.usuario_id
-        WHERE p.id = ? AND (u.correo = ? OR u.telefono = ?)`;
-      parametros = [numeroPedido, correo, telefono];
-    }
-    const [pedidos] = await conexion.execute(consulta, parametros);
-    if (!pedidos.length) return res.status(404).json({ error: 'No encontramos un pedido con esos datos de verificación.' });
-    const pedido = pedidos[0];
-    pedido.productos = await cargarDetalles(pedido.id);
-    pedido.historial = await cargarHistorial(pedido.id, conexion, true);
-    return res.json([pedido]);
+    idPedido = verificarTokenSeguimiento(token, process.env.JWT_SECRETO);
   } catch (error) {
-    console.error('Error al buscar el pedido del cliente:', error.code || 'Error');
+    return res.status(404).json({ error: 'El enlace de seguimiento no es válido o ha vencido.' });
+  }
+
+  try {
+    const [pedidos] = await conexion.execute(
+      `SELECT id, fecha, estado, total, costo_envio, zona_entrega, forma_pago
+       FROM pedidos WHERE id = ?`, [idPedido]
+    );
+    if (!pedidos.length) return res.status(404).json({ error: 'No encontramos ese pedido.' });
+    const pedido = pedidos[0];
+    const detalles = await cargarDetalles(pedido.id);
+    const historial = await cargarHistorial(pedido.id, conexion, true);
+    return res.json({
+      pedido: {
+        id: pedido.id,
+        fecha: pedido.fecha,
+        estado: pedido.estado,
+        total: pedido.total,
+        costo_envio: pedido.costo_envio,
+        zona_entrega: pedido.zona_entrega,
+        forma_pago: pedido.forma_pago,
+        productos: detalles.map(({ producto_id, cantidad, subtotal, nombre }) =>
+          ({ producto_id, cantidad, subtotal, nombre })
+        ),
+        historial: historial.map(({ estado_nuevo, fecha_hora, observacion }) =>
+          ({ estado_nuevo, fecha_hora, observacion })
+        )
+      }
+    });
+  } catch (error) {
+    console.error('Error al buscar el pedido con enlace privado:', error.code || 'Error');
     return res.status(500).json({ error: 'No se pudo buscar el pedido.' });
   }
 });
