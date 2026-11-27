@@ -1,5 +1,30 @@
 ﻿let configuracionEnvio = { tarifas: {}, envio_gratis_desde: 20, zonas_envio_gratis: [], formas_pago: [] };
 let productosPedido = [];
+const claveAlmacenamientoIdempotencia = 'charqui_clave_idempotencia_pedido';
+const formatoClaveIdempotencia = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function generarClaveIdempotencia() {
+  if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+    throw new Error('Este navegador no permite proteger los reintentos del pedido. Actualiza el navegador para continuar.');
+  }
+  if (typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hexadecimal = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `${hexadecimal.slice(0, 8)}-${hexadecimal.slice(8, 12)}-${hexadecimal.slice(12, 16)}-${hexadecimal.slice(16, 20)}-${hexadecimal.slice(20)}`;
+}
+
+function obtenerClaveIdempotencia() {
+  let clave = localStorage.getItem(claveAlmacenamientoIdempotencia);
+  if (!formatoClaveIdempotencia.test(clave || '')) {
+    clave = generarClaveIdempotencia();
+    localStorage.setItem(claveAlmacenamientoIdempotencia, clave);
+  }
+  return clave;
+}
 
 function mostrarErrorCampo(campo) {
   const aviso = document.getElementById(`error-${campo.id}`);
@@ -25,6 +50,8 @@ async function leerRespuestaJson(respuesta) {
 }
 
 async function cargarResumen() {
+  const botonEnviar = document.querySelector('#formulario-pedido button[type=submit]');
+  botonEnviar.disabled = true;
   const carrito = JSON.parse(localStorage.getItem('charqui_carrito') || '[]');
   const resumen = document.getElementById('resumen-pedido');
   if (!carrito.length) {
@@ -50,11 +77,19 @@ async function cargarResumen() {
   productosPedido = await Promise.all(carrito.map(async (item) => {
     const respuesta = await fetch(`/api/productos/${item.id}`);
     const producto = await leerRespuestaJson(respuesta);
-    if (!respuesta.ok) throw new Error(producto.error);
+    if (!respuesta.ok) throw new Error(`${producto.error || 'Un producto ya no está disponible.'} Vuelve al carrito para revisarlo.`);
+    const stock = Number(producto.stock);
+    if (producto.estado !== 'disponible' || stock < 1) {
+      throw new Error(`${producto.nombre} está agotado. Vuelve al carrito para quitarlo antes de continuar.`);
+    }
+    if (Number(item.cantidad) > stock) {
+      throw new Error(`De ${producto.nombre} quedan ${stock} unidades y tienes ${item.cantidad} en el carrito. Vuelve al carrito y ajusta la cantidad.`);
+    }
     return { id: producto.id, nombre: producto.nombre, cantidad: item.cantidad,
       precio: Number(producto.precio_oferta || producto.precio) };
   }));
   dibujarResumen();
+  botonEnviar.disabled = false;
   zonas.addEventListener('change', dibujarResumen);
 }
 
@@ -78,6 +113,7 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
   const mensaje = document.getElementById('mensaje-pedido');
   const formulario = evento.currentTarget;
   if (!formulario.reportValidity()) return;
+  const botonEnviar = formulario.querySelector('button[type="submit"]');
 
   const telefono = document.getElementById('telefono').value.trim();
   if (!/^[+0-9 ()-]{7,20}$/.test(telefono)) {
@@ -109,19 +145,34 @@ document.getElementById('formulario-pedido').addEventListener('submit', async (e
     productos: productosPedido.map((item) => ({ id: item.id, cantidad: item.cantidad }))
   };
 
+  botonEnviar.disabled = true;
   try {
+    const claveIdempotencia = obtenerClaveIdempotencia();
     const respuesta = await fetch('/api/pedidos', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': claveIdempotencia },
+      body: JSON.stringify(datos)
     });
     const pedido = await leerRespuestaJson(respuesta);
+    if (respuesta.status === 429) {
+      const retryAfter = Number(respuesta.headers.get('Retry-After'));
+      const espera = Number.isFinite(retryAfter) && retryAfter > 0
+        ? ` Espera ${Math.ceil(retryAfter)} segundos antes de reintentar.`
+        : '';
+      throw new Error(`El servidor limitó temporalmente la solicitud.${espera} Conservamos tu carrito y la clave de esta compra para evitar duplicados.`);
+    }
     if (!respuesta.ok) throw new Error(pedido.error || 'No se pudo registrar el pedido.');
+    localStorage.removeItem(claveAlmacenamientoIdempotencia);
     localStorage.removeItem('charqui_carrito');
     window.dispatchEvent(new Event('charqui-carrito-actualizado'));
     const lista = pedido.productos.map((item) => `${item.nombre} x ${item.cantidad}: $${Number(item.subtotal).toFixed(2)}`).join('\n');
-    const resumen = `Hola, quiero coordinar el pago del pedido #${pedido.id}.\n${lista}\nEnvío: $${Number(pedido.costo_envio).toFixed(2)}\nTotal: $${Number(pedido.total).toFixed(2)}\nForma de pago: ${pedido.forma_pago}`;
+    const seguimiento = new URL('/mis-pedidos.html', window.location.origin);
+    seguimiento.hash = new URLSearchParams({ token: pedido.token_seguimiento }).toString();
+    const resumen = `Hola, quiero coordinar el pago del pedido #${pedido.id}.\n${lista}\nEnvío: $${Number(pedido.costo_envio).toFixed(2)}\nTotal: $${Number(pedido.total).toFixed(2)}\nForma de pago: ${pedido.forma_pago}\nSeguimiento privado: ${seguimiento.href}`;
     window.location.href = `https://wa.me/${NUMERO_WHATSAPP}?text=${encodeURIComponent(resumen)}`;
   } catch (error) {
     mensaje.textContent = error.message;
+    botonEnviar.disabled = false;
   }
 });
 
@@ -134,6 +185,6 @@ formularioPedido.addEventListener('change', (evento) => {
   if (evento.target.id) mostrarErrorCampo(evento.target);
 });
 
-cargarResumen().catch(() => {
-  document.getElementById('mensaje-pedido').textContent = 'No se pudo cargar el resumen del pedido.';
+cargarResumen().catch((error) => {
+  document.getElementById('mensaje-pedido').textContent = error.message || 'No se pudo cargar el resumen del pedido.';
 });

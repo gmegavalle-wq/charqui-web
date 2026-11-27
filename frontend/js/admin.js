@@ -34,16 +34,49 @@ function mostrarMensaje(texto, esError = false) {
 }
 
 async function cargarDashboard() {
-  const datos = await pedir('/api/administracion/dashboard');
-  const html = estados.filter(([estado]) => estado !== 'cancelado').map(([estado, nombre]) => `
-    <button class="indicador-admin" type="button" data-estado="${estado}"><span>${nombre}</span><strong>${datos.pedidos[estado] || 0}</strong></button>`);
-  html.push(`<article class="indicador-admin indicador-venta"><span>Ventas de hoy</span><strong>$${Number(datos.ventas_hoy).toFixed(2)}</strong></article>`);
-  html.push(`<article class="indicador-admin indicador-venta"><span>Ventas del mes</span><strong>$${Number(datos.ventas_mes).toFixed(2)}</strong></article>`);
-  html.push(`<button class="indicador-admin indicador-alerta" data-modulo-destino="inventario" type="button"><span>Stock bajo · 5 o menos</span><strong>${datos.productos_stock_bajo}</strong></button>`);
-  html.push(`<button class="indicador-admin indicador-cancelado" data-estado="cancelado" type="button"><span>Cancelados</span><strong>${datos.pedidos.cancelado || 0}</strong></button>`);
-  if (datos.pedidos_legacy) html.push(`<article class="indicador-admin"><span>Estado anterior · En tu Puerta</span><strong>${datos.pedidos_legacy}</strong></article>`);
+  const [resultadoDashboard, resultadoMayoristas] = await Promise.allSettled([
+    pedir('/api/administracion/dashboard'),
+    pedir('/api/mayoristas/admin/solicitudes')
+  ]);
+  if (resultadoDashboard.status === 'rejected') throw resultadoDashboard.reason;
+  const datos = resultadoDashboard.value;
+  const solicitudesMayoristas = resultadoMayoristas.status === 'fulfilled' ? resultadoMayoristas.value : [];
+  const abiertasMayoristas = solicitudesMayoristas.filter((item) =>
+    ['nueva', 'en_revision', 'cotizacion_preparada', 'cotizacion_enviada'].includes(item.estado)
+  ).length;
+  const compromisosMayoristas = solicitudesMayoristas.filter((item) =>
+    ['aceptada', 'convertida_en_pedido'].includes(item.estado)
+  ).length;
+  const pedidosAtencion = [
+    ['recibido_y_confirmado', 'Pedidos pendientes'],
+    ['en_preparacion', 'En preparación'],
+    ['listo_para_despacho', 'Listos para entrega']
+  ];
+  const tarjetasPedidos = pedidosAtencion.map(([estado, nombre]) => `
+    <button class="indicador-admin" type="button" data-estado="${estado}"><span>${nombre}</span><strong>${datos.pedidos[estado] || 0}</strong></button>`).join('');
+  const entregasPendientes = Number(datos.pedidos.listo_para_despacho || 0) + Number(datos.pedidos.en_reparto_local || 0);
+  const tarjetasOperacion = `${tarjetasPedidos}
+    <button class="indicador-admin indicador-entregas" data-modulo-destino="entregas" type="button"><span>Entregas pendientes</span><strong>${entregasPendientes}</strong></button>`;
+  const tarjetasComercial = resultadoMayoristas.status === 'fulfilled'
+    ? `<button class="indicador-admin" data-modulo-destino="mayoristas" type="button"><span>Solicitudes y cotizaciones abiertas</span><strong>${abiertasMayoristas}</strong></button>
+      <button class="indicador-admin" data-modulo-destino="mayoristas" type="button"><span>Compromisos mayoristas</span><strong>${compromisosMayoristas}</strong></button>`
+    : '<article class="indicador-admin"><span>Datos mayoristas</span><strong>No disponibles</strong></article>';
+  const tarjetasInventario = `<button class="indicador-admin indicador-alerta" data-modulo-destino="inventario" type="button"><span>Stock bajo · ${Number(datos.limite_stock_bajo ?? 5)} o menos</span><strong>${datos.productos_stock_bajo}</strong></button>`;
+  const tarjetasVentas = `<article class="indicador-admin indicador-venta"><span>Valor en pedidos · hoy</span><strong>$${Number(datos.valor_pedidos_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos pendientes · hoy</span><strong>$${Number(datos.pagos_pendientes_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos confirmados · hoy</span><strong>$${Number(datos.pagos_confirmados_hoy).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Valor en pedidos · mes</span><strong>$${Number(datos.valor_pedidos_mes).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos pendientes · mes</span><strong>$${Number(datos.pagos_pendientes_mes).toFixed(2)}</strong></article>
+    <article class="indicador-admin indicador-venta"><span>Pagos confirmados · mes</span><strong>$${Number(datos.pagos_confirmados_mes).toFixed(2)}</strong></article>`;
+  const notaFinanciera = '<p class="texto-secundario">Los pagos confirmados reflejan el estado registrado en cada pedido; no se registran devoluciones en este sistema.</p>';
+  const tarjetasHistoricas = `<button class="indicador-admin indicador-cancelado" data-estado="cancelado" type="button"><span>Pedidos cancelados</span><strong>${datos.pedidos.cancelado || 0}</strong></button>
+    ${datos.pedidos_legacy ? `<article class="indicador-admin"><span>Estado anterior · En tu Puerta</span><strong>${datos.pedidos_legacy}</strong></article>` : ''}`;
   const contenedor = document.getElementById('indicadores-admin');
-  contenedor.innerHTML = html.join('');
+  contenedor.innerHTML = `<div class="grupo-indicadores-admin"><h3>Operaciones</h3><div>${tarjetasOperacion}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Comercial</h3><div>${tarjetasComercial}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Inventario</h3><div>${tarjetasInventario}</div></div>
+    <div class="grupo-indicadores-admin"><h3>Resumen financiero</h3><div>${tarjetasVentas}</div>${notaFinanciera}</div>
+    <div class="grupo-indicadores-admin"><h3>Histórico</h3><div>${tarjetasHistoricas}</div></div>`;
   contenedor.querySelectorAll('[data-estado]').forEach((boton) => boton.addEventListener('click', () => {
     document.getElementById('filtro-estado-pedido').value = boton.dataset.estado;
     mostrarModulo('pedidos');
@@ -213,15 +246,17 @@ async function cargarReporte() {
   const resumen = reporte.resumen;
   document.getElementById('resumen-reporte').innerHTML = `
     <article>Periodo<strong>${escaparHtml(reporte.desde)} – ${escaparHtml(reporte.hasta)}</strong></article>
-    <article>Hoy<strong>$${Number(reporte.periodos.ventas_hoy).toFixed(2)} · ${Number(reporte.periodos.pedidos_hoy || 0)} pedidos</strong></article>
-    <article>Esta semana<strong>$${Number(reporte.periodos.ventas_semana).toFixed(2)} · ${Number(reporte.periodos.pedidos_semana || 0)} pedidos</strong></article>
-    <article>Este mes<strong>$${Number(reporte.periodos.ventas_mes).toFixed(2)} · ${Number(reporte.periodos.pedidos_mes || 0)} pedidos</strong></article>
-    <article>Ventas registradas<strong>$${Number(resumen.ventas_registradas).toFixed(2)}</strong></article>
+    <article>Valor en pedidos · hoy<strong>$${Number(reporte.periodos.valor_pedidos_hoy).toFixed(2)} · ${Number(reporte.periodos.pedidos_hoy || 0)} pedidos</strong></article>
+    <article>Valor en pedidos · semana<strong>$${Number(reporte.periodos.valor_pedidos_semana).toFixed(2)} · ${Number(reporte.periodos.pedidos_semana || 0)} pedidos</strong></article>
+    <article>Valor en pedidos · mes<strong>$${Number(reporte.periodos.valor_pedidos_mes).toFixed(2)} · ${Number(reporte.periodos.pedidos_mes || 0)} pedidos</strong></article>
+    <article>Pagos pendientes · periodo<strong>$${Number(resumen.pagos_pendientes).toFixed(2)}</strong></article>
+    <article>Pagos confirmados · periodo<strong>$${Number(resumen.pagos_confirmados).toFixed(2)}</strong></article>
+    <article>Valor en pedidos · periodo<strong>$${Number(resumen.valor_pedidos).toFixed(2)}</strong></article>
     <article>Pedidos<strong>${Number(resumen.pedidos_registrados)}</strong></article>
     <article>Entregados<strong>${Number(resumen.pedidos_entregados || 0)}</strong></article>
     <article>Cancelados<strong>${Number(resumen.pedidos_cancelados || 0)}</strong></article>`;
   document.getElementById('tabla-reporte-productos').innerHTML = reporte.productos.map((producto) => `
-    <tr><td>${escaparHtml(producto.nombre)}</td><td>${producto.unidades}</td><td>$${Number(producto.ingresos).toFixed(2)}</td></tr>`).join('')
+    <tr><td>${escaparHtml(producto.nombre)}</td><td>${producto.unidades}</td><td>$${Number(producto.valor_pedidos).toFixed(2)}</td></tr>`).join('')
     || '<tr><td colspan="3">No hay ventas en este periodo.</td></tr>';
   document.getElementById('exportar-reporte').dataset.desde = desde;
   document.getElementById('exportar-reporte').dataset.hasta = hasta;
@@ -434,10 +469,10 @@ async function cargarMayoristas() {
   ]);
   productosMayoristasAdmin = productos;
   document.getElementById('tabla-mayoristas').innerHTML = solicitudes.length ? solicitudes.map((solicitud) => `
-    <tr><td>#${solicitud.id}</td><td>${escapar(solicitud.fecha)}</td>
-    <td>${escapar(solicitud.contacto)}<br><strong>${escapar(solicitud.negocio)}</strong></td>
-    <td>${escapar(solicitud.ciudad)}, ${escapar(solicitud.provincia)}</td><td>${escapar(solicitud.productos || '')}</td>
-    <td>${escapar(estadosMayoristas[solicitud.estado] || solicitud.estado)}</td>
+    <tr><td>#${solicitud.id}</td><td>${escaparHtml(solicitud.fecha)}</td>
+    <td>${escaparHtml(solicitud.contacto)}<br><strong>${escaparHtml(solicitud.negocio)}</strong></td>
+    <td>${escaparHtml(solicitud.ciudad)}, ${escaparHtml(solicitud.provincia)}</td><td>${escaparHtml(solicitud.productos || '')}</td>
+    <td>${escaparHtml(estadosMayoristas[solicitud.estado] || solicitud.estado)}</td>
     <td><button class="abrir-mayorista" data-id="${solicitud.id}" type="button">Revisar</button></td></tr>`).join('')
     : '<tr><td colspan="7">No hay solicitudes para estos filtros.</td></tr>';
   document.querySelectorAll('.abrir-mayorista').forEach((boton) => boton.addEventListener('click', () => abrirSolicitudMayorista(boton.dataset.id)));
@@ -445,7 +480,7 @@ async function cargarMayoristas() {
 }
 
 function opcionesProductoMayorista(seleccionado) {
-  return productosMayoristasAdmin.map((producto) => `<option value="${producto.id}" ${Number(producto.id) === Number(seleccionado) ? 'selected' : ''}>${escapar(producto.nombre)} · ${producto.gestiona_produccion ? 'por patita' : escapar(producto.presentaciones || 'por presentación')}</option>`).join('');
+  return productosMayoristasAdmin.map((producto) => `<option value="${producto.id}" ${Number(producto.id) === Number(seleccionado) ? 'selected' : ''}>${escaparHtml(producto.nombre)} · ${producto.gestiona_produccion ? 'por patita' : escaparHtml(producto.presentaciones || 'por presentación')}</option>`).join('');
 }
 
 function crearFilaCotizacionMayorista(producto = {}) {
@@ -517,9 +552,9 @@ function renderEditorCotizacion(solicitud, cotizacion = null) {
           <label>Descuento manual ($)<input name="descuento" type="number" min="0" max="9999999999" step="0.01" value="${cotizacion ? Number(cotizacion.descuento) : 0}"></label>
           <label>Envío ($)<input name="envio" type="number" min="0" max="9999999999" step="0.01" value="${cotizacion ? Number(cotizacion.envio) : 0}"></label>
           <label>Vigencia<input name="vigencia" type="date" value="${cotizacion && cotizacion.vigencia ? String(cotizacion.vigencia).slice(0, 10) : ''}"></label>
-          <label>Condiciones de pago<input name="condiciones_pago" maxlength="500" value="${cotizacion ? escapar(cotizacion.condiciones_pago || '') : ''}"></label>
+          <label>Condiciones de pago<input name="condiciones_pago" maxlength="500" value="${cotizacion ? escaparHtml(cotizacion.condiciones_pago || '') : ''}"></label>
         </div>
-        <label>Observaciones internas (solo administración)<textarea name="observaciones_internas" maxlength="4000">${cotizacion ? escapar(cotizacion.observaciones_internas || '') : ''}</textarea></label>
+        <label>Observaciones internas (solo administración)<textarea name="observaciones_internas" maxlength="4000">${cotizacion ? escaparHtml(cotizacion.observaciones_internas || '') : ''}</textarea></label>
         <button type="submit">Guardar cotización</button>
       </form>
       ${cotizacion && ['aceptada'].includes(cotizacion.estado) ? `<form class="convertir-cotizacion-mayorista formulario-modulo" data-id="${cotizacion.id}"><h4>Convertir cotización aceptada en pedido</h4><label>Fecha prevista de entrega<input name="fecha_entrega" type="date" min="${fechaLocalAdmin()}" required></label><button type="submit">Revisar y crear pedido</button></form>` : ''}
@@ -544,19 +579,19 @@ function renderEditorCotizacion(solicitud, cotizacion = null) {
 async function abrirSolicitudMayorista(id) {
   try {
     const datos = await pedir(`/api/mayoristas/admin/solicitudes/${id}`);
-    solicitudMayoristaActual = datos.solicitud;
+    solicitudMayoristaActual = { ...datos.solicitud, productos: datos.productos };
     const cotizaciones = datos.cotizaciones.map((cotizacion) => `<article class="cotizacion-historica">
-      <h4>Cotización #${cotizacion.id} · ${escapar(cotizacion.estado)}</h4>
-      <p>${escapar(cotizacion.fecha)} · Subtotal $${Number(cotizacion.subtotal).toFixed(2)} · Descuento $${Number(cotizacion.descuento).toFixed(2)} · Envío $${Number(cotizacion.envio).toFixed(2)} · Total $${Number(cotizacion.total).toFixed(2)}</p>
-      ${cotizacion.productos.map((linea) => `<p>${escapar(linea.nombre_producto)} · ${Number(linea.cantidad)} ${escapar(linea.unidad)} × $${Number(linea.precio_unitario).toFixed(3)}</p>`).join('')}
+      <h4>Cotización #${cotizacion.id} · ${escaparHtml(cotizacion.estado)}</h4>
+      <p>${escaparHtml(cotizacion.fecha)} · Subtotal $${Number(cotizacion.subtotal).toFixed(2)} · Descuento $${Number(cotizacion.descuento).toFixed(2)} · Envío $${Number(cotizacion.envio).toFixed(2)} · Total $${Number(cotizacion.total).toFixed(2)}</p>
+      ${cotizacion.productos.map((linea) => `<p>${escaparHtml(linea.nombre_producto)} · ${Number(linea.cantidad)} ${escaparHtml(linea.unidad)} × $${Number(linea.precio_unitario).toFixed(3)}</p>`).join('')}
       ${['preparada', 'enviada'].includes(cotizacion.estado) ? `<button class="enviar-cotizacion-mayorista" data-id="${cotizacion.id}" type="button">Preparar enlace privado y WhatsApp</button>` : ''}
       ${cotizacion.estado === 'aceptada' ? `<button class="editar-cotizacion-aceptada" data-id="${cotizacion.id}" type="button">Revisar y convertir</button>` : ''}
     </article>`).join('') || '<p>Aún no hay cotizaciones.</p>';
-    const historial = datos.historial.map((item) => `<li>${escapar(item.fecha)} · ${escapar(item.evento)}${item.detalle ? ` · ${escapar(item.detalle)}` : ''}${item.administrador ? ` · ${escapar(item.administrador)}` : ''}</li>`).join('') || '<li>Sin movimientos anteriores.</li>';
-    const historico = datos.historico_cliente.map((item) => `<li>Solicitud #${item.id} · ${escapar(item.fecha)} · ${escapar(estadosMayoristas[item.estado] || item.estado)} · ${escapar(item.productos || '')}${item.cotizacion_id ? ` · Cotización #${item.cotizacion_id} ${escapar(item.estado_cotizacion)} · $${Number(item.total || 0).toFixed(2)}` : ''}</li>`).join('');
+    const historial = datos.historial.map((item) => `<li>${escaparHtml(item.fecha)} · ${escaparHtml(item.evento)}${item.detalle ? ` · ${escaparHtml(item.detalle)}` : ''}${item.administrador ? ` · ${escaparHtml(item.administrador)}` : ''}</li>`).join('') || '<li>Sin movimientos anteriores.</li>';
+    const historico = datos.historico_cliente.map((item) => `<li>Solicitud #${item.id} · ${escaparHtml(item.fecha)} · ${escaparHtml(estadosMayoristas[item.estado] || item.estado)} · ${escaparHtml(item.productos || '')}${item.cotizacion_id ? ` · Cotización #${item.cotizacion_id} ${escaparHtml(item.estado_cotizacion)} · $${Number(item.total || 0).toFixed(2)}` : ''}</li>`).join('');
     const detalle = document.getElementById('detalle-mayorista');
-    detalle.innerHTML = `<div class="detalle-mayorista-cabecera"><div><p class="sobrelinea">Solicitud #${datos.solicitud.id} · ${escapar(estadosMayoristas[datos.solicitud.estado])}</p><h3>${escapar(datos.solicitud.negocio)}</h3></div><button id="cerrar-detalle-mayorista" class="boton boton-borde" type="button">Cerrar detalle</button></div>
-      <div class="datos-cliente-mayorista"><p><strong>Contacto:</strong> ${escapar(datos.solicitud.contacto)}</p><p><strong>Teléfono:</strong> ${escapar(datos.solicitud.telefono)}</p><p><strong>WhatsApp:</strong> ${escapar(datos.solicitud.whatsapp)}</p><p><strong>Correo:</strong> ${escapar(datos.solicitud.correo)}</p><p><strong>Ubicación:</strong> ${escapar(datos.solicitud.sector_direccion || '')} · ${escapar(datos.solicitud.ciudad)}, ${escapar(datos.solicitud.provincia)}</p><p><strong>Tipo de negocio:</strong> ${escapar(datos.solicitud.tipo_negocio)}${datos.solicitud.otro_tipo_negocio ? ` · ${escapar(datos.solicitud.otro_tipo_negocio)}` : ''}</p><p><strong>Observaciones:</strong> ${escapar(datos.solicitud.observaciones || 'Ninguna')}</p></div>
+    detalle.innerHTML = `<div class="detalle-mayorista-cabecera"><div><p class="sobrelinea">Solicitud #${datos.solicitud.id} · ${escaparHtml(estadosMayoristas[datos.solicitud.estado])}</p><h3>${escaparHtml(datos.solicitud.negocio)}</h3></div><button id="cerrar-detalle-mayorista" class="boton boton-borde" type="button">Cerrar detalle</button></div>
+      <div class="datos-cliente-mayorista"><p><strong>Contacto:</strong> ${escaparHtml(datos.solicitud.contacto)}</p><p><strong>Teléfono:</strong> ${escaparHtml(datos.solicitud.telefono)}</p><p><strong>WhatsApp:</strong> ${escaparHtml(datos.solicitud.whatsapp)}</p><p><strong>Correo:</strong> ${escaparHtml(datos.solicitud.correo)}</p><p><strong>Ubicación:</strong> ${escaparHtml(datos.solicitud.sector_direccion || '')} · ${escaparHtml(datos.solicitud.ciudad)}, ${escaparHtml(datos.solicitud.provincia)}</p><p><strong>Tipo de negocio:</strong> ${escaparHtml(datos.solicitud.tipo_negocio)}${datos.solicitud.otro_tipo_negocio ? ` · ${escaparHtml(datos.solicitud.otro_tipo_negocio)}` : ''}</p><p><strong>Observaciones:</strong> ${escaparHtml(datos.solicitud.observaciones || 'Ninguna')}</p></div>
       <div class="acciones-detalle-mayorista"><label>Estado de solicitud<select id="nuevo-estado-mayorista"><option value="nueva">Nueva</option><option value="en_revision">En revisión</option><option value="rechazada">Rechazada</option></select></label><button id="guardar-estado-mayorista" type="button">Guardar estado</button></div>
       <h3>Historial del cliente</h3><ul>${historico || '<li>Sin historial.</li>'}</ul><h3>Versiones de cotización</h3><div id="cotizaciones-mayorista">${cotizaciones}</div>
       <div id="acciones-compartir-cotizacion"></div><button id="nueva-cotizacion-mayorista" type="button">Crear cotización</button><h3>Actividad</h3><ol>${historial}</ol>`;
@@ -564,7 +599,7 @@ async function abrirSolicitudMayorista(id) {
     detalle.querySelector('#nuevo-estado-mayorista').value = datos.solicitud.estado;
     detalle.querySelector('#cerrar-detalle-mayorista').addEventListener('click', () => { detalle.hidden = true; });
     detalle.querySelector('#guardar-estado-mayorista').addEventListener('click', guardarEstadoMayorista);
-    detalle.querySelector('#nueva-cotizacion-mayorista').addEventListener('click', () => renderEditorCotizacion(datos.solicitud));
+    detalle.querySelector('#nueva-cotizacion-mayorista').addEventListener('click', () => renderEditorCotizacion(solicitudMayoristaActual));
     detalle.querySelectorAll('.enviar-cotizacion-mayorista').forEach((boton) => boton.addEventListener('click', () => compartirCotizacionMayorista(boton.dataset.id)));
     detalle.querySelectorAll('.editar-cotizacion-aceptada').forEach((boton) => boton.addEventListener('click', () => {
       const cotizacion = datos.cotizaciones.find((item) => String(item.id) === boton.dataset.id);
@@ -612,7 +647,7 @@ async function compartirCotizacionMayorista(id) {
     const numero = String(datos.whatsapp || '').replace(/\D/g, '');
     const mensaje = `Hola ${datos.negocio}, tu cotización privada de CHARQUI está lista: ${enlace}`;
     const whatsapp = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
-    document.getElementById('acciones-compartir-cotizacion').innerHTML = `<p>Enlace privado (compártelo solo con este cliente):</p><input readonly value="${escapar(enlace)}" aria-label="Enlace privado de cotización"><div class="botones"><button id="copiar-enlace-cotizacion" type="button">Copiar enlace</button><a class="boton boton-borde" href="${escapar(whatsapp)}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a class="boton boton-borde" href="${escapar(enlace)}" target="_blank" rel="noopener noreferrer">Vista imprimible</a></div>`;
+    document.getElementById('acciones-compartir-cotizacion').innerHTML = `<p>Enlace privado (compártelo solo con este cliente):</p><input readonly value="${escaparHtml(enlace)}" aria-label="Enlace privado de cotización"><div class="botones"><button id="copiar-enlace-cotizacion" type="button">Copiar enlace</button><a class="boton boton-borde" href="${escaparHtml(whatsapp)}" target="_blank" rel="noopener noreferrer">Abrir WhatsApp</a><a class="boton boton-borde" href="${escaparHtml(enlace)}" target="_blank" rel="noopener noreferrer">Vista imprimible</a></div>`;
     document.getElementById('copiar-enlace-cotizacion').addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(enlace); mostrarMensaje('Enlace privado copiado.'); }
       catch (error) { mostrarMensaje('Selecciona y copia el enlace privado.', true); }
@@ -639,9 +674,9 @@ async function cargarProduccionPatitas() {
   try {
     const datos = await pedir(`/api/mayoristas/admin/produccion?desde=${desde}&hasta=${hasta}`);
     document.getElementById('tabla-capacidad-patitas').innerHTML = datos.dias.map((dia) => `
-      <tr><td>${escapar(dia.fecha_entrega)}</td><td>${Number(dia.capacidad_unidades).toLocaleString('es-EC')}</td><td>${Number(dia.comprometidas).toLocaleString('es-EC')}</td><td>${(Number(dia.capacidad_unidades) - Number(dia.comprometidas)).toLocaleString('es-EC')}</td></tr>`).join('') || '<tr><td colspan="4">Aún no hay capacidad registrada en estas fechas.</td></tr>';
+      <tr><td>${escaparHtml(dia.fecha_entrega)}</td><td>${Number(dia.capacidad_unidades).toLocaleString('es-EC')}</td><td>${Number(dia.comprometidas).toLocaleString('es-EC')}</td><td>${(Number(dia.capacidad_unidades) - Number(dia.comprometidas)).toLocaleString('es-EC')}</td></tr>`).join('') || '<tr><td colspan="4">Aún no hay capacidad registrada en estas fechas.</td></tr>';
     document.getElementById('tabla-produccion-patitas').innerHTML = datos.compromisos.map((item) => `
-      <tr><td>Pedido #${item.pedido_id}<br>${escapar(item.negocio)} · ${escapar(item.contacto)}</td><td>${escapar(item.fecha_entrega)}</td><td>${item.unidades_pedidas}</td>
+      <tr><td>Pedido #${item.pedido_id}<br>${escaparHtml(item.negocio)} · ${escaparHtml(item.contacto)}</td><td>${escaparHtml(item.fecha_entrega)}</td><td>${item.unidades_pedidas}</td>
       <td><input type="number" min="${item.unidades_producidas}" max="${item.unidades_pedidas}" value="${item.unidades_producidas}" data-producidas="${item.detalle_pedido_id}" aria-label="Patitas producidas"></td>
       <td><input type="number" min="${item.unidades_listas}" max="${item.unidades_pedidas}" value="${item.unidades_listas}" data-listas="${item.detalle_pedido_id}" aria-label="Patitas listas"></td>
       <td><input type="number" min="${item.unidades_entregadas}" max="${item.unidades_pedidas}" value="${item.unidades_entregadas}" data-entregadas="${item.detalle_pedido_id}" aria-label="Patitas entregadas"></td>
@@ -676,7 +711,12 @@ async function guardarCapacidadPatitas(evento) {
 
 function mostrarModulo(nombre) {
   document.querySelectorAll('.modulo-admin').forEach((modulo) => { modulo.hidden = modulo.id !== `modulo-${nombre}`; });
-  document.querySelectorAll('.menu-admin [data-modulo]').forEach((boton) => boton.classList.toggle('activo', boton.dataset.modulo === nombre));
+  document.querySelectorAll('.menu-admin [data-modulo]').forEach((boton) => {
+    const activo = boton.dataset.modulo === nombre;
+    boton.classList.toggle('activo', activo);
+    if (activo) boton.setAttribute('aria-current', 'page');
+    else boton.removeAttribute('aria-current');
+  });
   const cargas = {
     dashboard: cargarDashboard, pedidos: cargarPedidos, entregas: cargarEntregas,
     inventario: cargarInventario, clientes: cargarClientes, reportes: cargarReporte,
@@ -761,6 +801,7 @@ function iniciarEventos() {
   document.getElementById('limpiar-producto').addEventListener('click', limpiarProducto);
   document.getElementById('formulario-inventario').addEventListener('submit', async (evento) => {
     evento.preventDefault();
+    const formulario = evento.currentTarget;
     const id = document.getElementById('producto-movimiento').value;
     const tipo = document.getElementById('tipo-movimiento').value;
     const datos = { tipo, motivo: document.getElementById('motivo-movimiento').value.trim() };
@@ -768,7 +809,7 @@ function iniciarEventos() {
     else datos.cantidad = document.getElementById('cantidad-movimiento').value;
     try {
       await pedir(`/api/administracion/inventario/${id}/movimientos`, { method: 'POST', body: JSON.stringify(datos) });
-      mostrarMensaje('Movimiento registrado.'); evento.currentTarget.reset();
+      mostrarMensaje('Movimiento registrado.'); formulario.reset();
       await cargarInventario(); await cargarMovimientos(id);
     } catch (error) { mostrarMensaje(error.message, true); }
   });

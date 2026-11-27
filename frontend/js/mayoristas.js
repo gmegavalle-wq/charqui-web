@@ -133,6 +133,21 @@ async function enviarSolicitudMayorista(evento) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datos)
     });
     const resultado = await leerRespuestaMayorista(respuesta);
+    const productosMensaje = [...solicitudMayorista.values()]
+      .map(({ producto, cantidad }) => `- ${producto.nombre}: ${cantidad}`)
+      .join('\n');
+    const observaciones = String(datos.observaciones || '').trim();
+    const mensajeWhatsApp = [
+      'Hola, envié una solicitud de cotización mayorista a CHARQUI.',
+      `Solicitud: #${resultado.id}`,
+      `Nombre del cliente: ${datos.contacto}`,
+      `Negocio: ${datos.negocio}`,
+      `Teléfono de contacto: ${datos.telefono}`,
+      `WhatsApp de contacto: ${datos.whatsapp}`,
+      `Productos solicitados:\n${productosMensaje}`,
+      ...(observaciones ? [`Observaciones: ${observaciones}`] : [])
+    ].join('\n');
+    const enlaceWhatsApp = `https://wa.me/${window.NUMERO_WHATSAPP}?text=${encodeURIComponent(mensajeWhatsApp)}`;
     confirmar.innerHTML = `<strong>Solicitud #${resultado.id} recibida.</strong><br>${escaparMayorista(resultado.mensaje)} CHARQUI se comunicará contigo por los datos que compartiste.`;
     confirmar.hidden = false;
     formulario.reset();
@@ -140,6 +155,7 @@ async function enviarSolicitudMayorista(evento) {
     mostrarSolicitudMayorista();
     claveSolicitudMayorista = '';
     sessionStorage.removeItem('charqui_clave_mayorista');
+    window.location.href = enlaceWhatsApp;
   } catch (errorEnvio) {
     error.textContent = errorEnvio.message;
   } finally {

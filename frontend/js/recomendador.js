@@ -154,7 +154,8 @@ function obtenerCoincidencias() {
 
   // La prioridad se aplica solo a productos que ya cumplen todos los filtros.
   return compatibles.sort((productoA, productoB) =>
-    Number(sonPatitasDePollo(productoB)) - Number(sonPatitasDePollo(productoA))
+    Number(esProductoPrioritario(productoB) || sonPatitasDePollo(productoB)) -
+    Number(esProductoPrioritario(productoA) || sonPatitasDePollo(productoA))
   );
 }
 

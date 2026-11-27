@@ -1,0 +1,10 @@
+erDiagram
+  USUARIOS ||--o{ PEDIDOS : realiza
+  USUARIOS ||--o{ HISTORIAL_PEDIDOS : administra
+  USUARIOS ||--o{ MOVIMIENTOS_INVENTARIO : administra
+  PEDIDOS ||--|{ DETALLE_PEDIDO : contiene
+  PRODUCTOS ||--o{ DETALLE_PEDIDO : aparece_en
+  PEDIDOS ||--o{ HISTORIAL_PEDIDOS : registra
+  PEDIDOS ||--o{ MOVIMIENTOS_INVENTARIO : puede_vincular
+  PRODUCTOS ||--o{ MOVIMIENTOS_INVENTARIO : afecta
+  PEDIDOS ||--o| IDEMPOTENCIA_PEDIDOS : evita_duplicados

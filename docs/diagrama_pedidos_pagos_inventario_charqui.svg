@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="700" viewBox="0 0 1400 700">
+<rect width="1400" height="700" fill="#f8faf9"/>
+<text x="700" y="50" text-anchor="middle" font-family="Calibri,Arial" font-size="32" font-weight="700" fill="#174c43">Modelo de pedidos, pagos e inventario</text>
+<g font-family="Calibri,Arial" font-size="18">
+<g fill="#d9ebe6" stroke="#28715f" stroke-width="2">
+<rect x="70" y="120" rx="12" width="240" height="100"/><text x="190" y="155" text-anchor="middle" font-weight="700">usuarios</text><text x="190" y="185" text-anchor="middle">id PK</text><text x="190" y="207" text-anchor="middle">correo UNIQUE · rol</text>
+<rect x="580" y="120" rx="12" width="240" height="100"/><text x="700" y="155" text-anchor="middle" font-weight="700">pedidos</text><text x="700" y="185" text-anchor="middle">id PK · usuario_id FK</text><text x="700" y="207" text-anchor="middle">estado · pago_confirmado</text>
+<rect x="1090" y="120" rx="12" width="240" height="100"/><text x="1210" y="155" text-anchor="middle" font-weight="700">detalle_pedido</text><text x="1210" y="185" text-anchor="middle">pedido_id FK</text><text x="1210" y="207" text-anchor="middle">producto_id FK · cantidad</text>
+<rect x="580" y="380" rx="12" width="240" height="100"/><text x="700" y="415" text-anchor="middle" font-weight="700">productos</text><text x="700" y="445" text-anchor="middle">id PK · precio · stock</text><text x="700" y="467" text-anchor="middle">estado · tipo_mascota</text>
+<rect x="70" y="380" rx="12" width="240" height="100"/><text x="190" y="415" text-anchor="middle" font-weight="700">historial_pedidos</text><text x="190" y="445" text-anchor="middle">pedido_id FK</text><text x="190" y="467" text-anchor="middle">estado_nuevo · visible_cliente</text>
+<rect x="1090" y="380" rx="12" width="240" height="100"/><text x="1210" y="415" text-anchor="middle" font-weight="700">movimientos_inventario</text><text x="1210" y="445" text-anchor="middle">producto_id · pedido_id FK</text><text x="1210" y="467" text-anchor="middle">stock_anterior · stock_nuevo</text>
+<rect x="580" y="560" rx="12" width="240" height="100"/><text x="700" y="595" text-anchor="middle" font-weight="700">idempotencia_pedidos</text><text x="700" y="625" text-anchor="middle">clave PK · huella</text><text x="700" y="647" text-anchor="middle">pedido_id UK/FK</text>
+</g>
+<g fill="none" stroke="#28715f" stroke-width="3">
+<path d="M310 170H580"/><text x="445" y="155" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M820 170H1090"/><text x="955" y="155" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M700 220V380"/><text x="720" y="300" fill="#174c43">N:M mediante detalle</text>
+<path d="M580 430H310"/><text x="445" y="415" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M820 430H1090"/><text x="955" y="415" text-anchor="middle" fill="#174c43">1:N</text>
+<path d="M700 220V560"/><text x="720" y="390" fill="#174c43">1:0..1</text>
+</g>
+</g>
+</svg>

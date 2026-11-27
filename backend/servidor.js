@@ -5,9 +5,25 @@ const path = require('path');
 
 const servidor = express();
 const carpetaFrontend = path.join(__dirname, '..', 'frontend');
+const origenesPermitidos = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origen) => origen.trim())
+  .filter(Boolean);
 
-servidor.use(cors());
-servidor.use(express.json());
+servidor.disable('x-powered-by');
+servidor.use((req, res, siguiente) => {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Referrer-Policy', 'no-referrer');
+  siguiente();
+});
+servidor.use(cors({
+  origin(origen, siguiente) {
+    if (!origen || origenesPermitidos.includes(origen)) return siguiente(null, true);
+    return siguiente(null, false);
+  },
+  credentials: false
+}));
+servidor.use(express.json({ limit: '32kb' }));
 servidor.use((req, res, siguiente) => {
   if (req.path.startsWith('/api/') && !req.is('multipart/form-data') && !req.body) {
     req.body = {};
@@ -49,6 +65,24 @@ servidor.use((error, req, res, siguiente) => {
   siguiente(error);
 });
 
-servidor.listen(Number(process.env.PUERTO || 3000), () => {
-  console.log(`Charqui está disponible en http://localhost:${process.env.PUERTO || 3000}`);
-});
+function iniciarServidor() {
+  if (!require('./utilidades/configuracion_seguridad').secretoJwtValido(process.env.JWT_SECRETO)) {
+    throw new Error('Configura JWT_SECRETO con al menos 32 bytes aleatorios antes de iniciar Charqui.');
+  }
+
+  const puerto = Number(process.env.PUERTO || 3000);
+  return servidor.listen(puerto, () => {
+    console.log(`Charqui está disponible en el puerto ${puerto}`);
+  });
+}
+
+if (require.main === module) {
+  try {
+    iniciarServidor();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
+
+module.exports = { servidor, iniciarServidor };
